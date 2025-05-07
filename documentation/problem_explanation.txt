@@ -1,0 +1,20 @@
+I extracted the dataset from the sql. 
+
+First the problem.
+
+Each patient has a unique identifier which is accident_number. 
+
+The consultant calls the patient(normally multiple times) and ask some questions about the pain and it's status(if it is the 2nd or higher time, then the status in comparison to the previous call will be asked), the function limitation and it's status (with the same logic). Based on the answers the consultant will assign values to 4 variables:
+
+* p_score which is pain score. values are 0 (no paint) till 4 (maximum pain)
+
+* p_status which is pain status. values are: 0 means verschlechtert(getting worse), 1 means unverändert( no change), 2 means verbessert(getting better)
+
+* fl_score which is function limitation, values are 0 (no limit) till 4 (highest limit)
+
+* fl_status which is function limitation status, values have same logic to p_status
+
+after assigning these values there is a guidance for a variable nbe. for example in the book it says for a patient with arm injury 2 weeks after the operation the pain and the limitation should be in a specific range. so they compare these information with the values that they assigned and at the end the consultant says that it is within the nbe which means the value 1 for variable nbe or it is not within the nbe which means value 0 or no information the nbe variable which is value 2. 
+
+my goal is to train the machine based on the dataset that I have and then for the new records it should predict the probability of nbe being 1 and being 0. 
+

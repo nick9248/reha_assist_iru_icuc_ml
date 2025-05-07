@@ -1,0 +1,121 @@
+2025-05-07 14:05:55,878 - patient_analysis - INFO - === PATIENT CONSULTATION DATA ANALYSIS ===
+2025-05-07 14:05:55,878 - patient_analysis - INFO - Using dataset: C:\Users\Nick\PycharmProjects\reha_assist_iru\assets\icuc_ml_dataset.xlsx
+2025-05-07 14:05:55,878 - patient_analysis - INFO - Saving logs to: C:\Users\Nick\PycharmProjects\reha_assist_iru\logs\01_data_exploration\20250507_140555
+2025-05-07 14:05:55,878 - patient_analysis - INFO - Saving plots to: C:\Users\Nick\PycharmProjects\reha_assist_iru\plots\01_data_exploration\20250507_140555
+2025-05-07 14:05:55,878 - patient_analysis - INFO - Loading data from: C:\Users\Nick\PycharmProjects\reha_assist_iru\assets\icuc_ml_dataset.xlsx
+2025-05-07 14:05:56,173 - patient_analysis - INFO - Preprocessing data...
+2025-05-07 14:05:56,184 - patient_analysis - INFO - === Dataset Overview ===
+2025-05-07 14:05:56,184 - patient_analysis - INFO - Dataset shape: 7491 rows, 12 columns
+2025-05-07 14:05:56,184 - patient_analysis - INFO - 
+Column names and data types:
+2025-05-07 14:05:56,184 - patient_analysis - INFO - accident_number                    object
+accident_date              datetime64[ns]
+contact_date               datetime64[ns]
+fl_score                            int64
+fl_status                           int64
+p_score                             int64
+p_status                            int64
+nbe                                 int64
+telephone_category                  int64
+days_since_accident                 int64
+days_since_last_consult           float64
+consult_seq                         int64
+dtype: object
+2025-05-07 14:05:56,185 - patient_analysis - INFO - 
+Number of unique patients: 2379
+2025-05-07 14:05:56,186 - patient_analysis - INFO - 
+Consultations per patient:
+2025-05-07 14:05:56,186 - patient_analysis - INFO -   Average: 3.15
+2025-05-07 14:05:56,186 - patient_analysis - INFO -   Min: 1
+2025-05-07 14:05:56,186 - patient_analysis - INFO -   Max: 16
+2025-05-07 14:05:56,186 - patient_analysis - INFO -   Distribution:
+1     439
+2     607
+3     581
+4     326
+5     162
+6     105
+7      77
+8      25
+9      24
+10      8
+11      8
+12      5
+13      4
+14      5
+15      2
+16      1
+Name: count, dtype: int64
+2025-05-07 14:05:56,186 - patient_analysis - INFO - 
+=== Missing Values ===
+2025-05-07 14:05:56,187 - patient_analysis - INFO - accident_number               0
+accident_date                 0
+contact_date                  0
+fl_score                      0
+fl_status                     0
+p_score                       0
+p_status                      0
+nbe                           0
+telephone_category            0
+days_since_accident           0
+days_since_last_consult    2379
+consult_seq                   0
+dtype: int64
+2025-05-07 14:05:56,187 - patient_analysis - INFO - 
+=== Summary Statistics ===
+2025-05-07 14:05:56,194 - patient_analysis - INFO -                        accident_date                   contact_date     fl_score    fl_status      p_score     p_status          nbe  telephone_category  days_since_accident  days_since_last_consult  consult_seq
+count                           7491                           7491  7491.000000  7491.000000  7491.000000  7491.000000  7491.000000         7491.000000          7491.000000              5112.000000  7491.000000
+mean   2023-11-09 01:55:43.372046592  2024-03-07 06:58:06.103324160     1.973568     1.568682     1.439327     1.584568     1.117875            1.115739           119.209985                34.729460     2.723268
+min              1966-03-01 00:00:00            2021-03-04 00:00:00     0.000000     0.000000     0.000000     0.000000     0.000000            0.000000          -353.000000                 0.000000     1.000000
+25%              2023-04-06 12:00:00            2023-07-26 12:00:00     1.000000     1.000000     1.000000     1.000000     1.000000            0.000000            44.000000                17.000000     1.000000
+50%              2023-12-14 00:00:00            2024-03-20 00:00:00     2.000000     2.000000     1.000000     2.000000     1.000000            1.000000            83.000000                30.000000     2.000000
+75%              2024-07-10 00:00:00            2024-10-16 00:00:00     3.000000     2.000000     2.000000     2.000000     2.000000            1.000000           140.000000                43.000000     3.000000
+max              2025-11-06 00:00:00            2025-05-07 00:00:00     4.000000     2.000000     4.000000     2.000000     2.000000            4.000000         21576.000000               406.000000    16.000000
+std                              NaN                            NaN     0.987152     0.535198     0.855296     0.563602     0.653727            1.020527           406.734717                28.540006     1.992085
+2025-05-07 14:05:56,197 - patient_analysis - INFO - 
+=== Target Variable (nbe) Distribution ===
+2025-05-07 14:05:56,197 - patient_analysis - INFO - nbe
+1    55.880390
+2    27.953544
+0    16.166066
+Name: proportion, dtype: float64
+2025-05-07 14:05:56,198 - patient_analysis - INFO - 
+=== Telephone Category Distribution ===
+2025-05-07 14:05:56,198 - patient_analysis - INFO -   1 (Following Contact): 3861 (51.54%)
+2025-05-07 14:05:56,198 - patient_analysis - INFO -   0 (First Contact): 2068 (27.61%)
+2025-05-07 14:05:56,198 - patient_analysis - INFO -   3 (Case Closed): 1221 (16.30%)
+2025-05-07 14:05:56,198 - patient_analysis - INFO -   2 (Not Reached): 265 (3.54%)
+2025-05-07 14:05:56,198 - patient_analysis - INFO -   4 (Complex Case): 76 (1.01%)
+2025-05-07 14:05:56,198 - patient_analysis - INFO - 
+=== Temporal Patterns ===
+2025-05-07 14:05:56,198 - patient_analysis - INFO - Average days since accident: 119.21
+2025-05-07 14:05:56,198 - patient_analysis - INFO - Average days between consultations: 34.73
+2025-05-07 14:05:56,198 - patient_analysis - INFO - 
+=== KEY INSIGHTS ===
+2025-05-07 14:05:56,198 - patient_analysis - INFO - 1. NBE Distribution: {1: 55.880389801094644, 2: 27.953544253103722, 0: 16.166065945801627}
+2025-05-07 14:05:56,199 - patient_analysis - INFO - 2. Top correlations with NBE:
+p_status              0.080745
+fl_status             0.065579
+telephone_category   -0.006844
+p_score              -0.065170
+fl_score             -0.070893
+Name: nbe, dtype: float64
+2025-05-07 14:05:56,312 - patient_analysis - INFO - 3. Top 5 feature importance from decision tree:
+days_since_accident    0.372054
+p_status               0.321946
+fl_score               0.129509
+fl_status              0.121470
+p_score                0.039815
+dtype: float64
+2025-05-07 14:05:56,316 - patient_analysis - INFO - 4. NBE distribution by telephone category:
+nbe                         0          1          2
+telephone_category                                 
+0                   10.058027  60.348162  29.593810
+1                   21.238021  51.515152  27.246827
+2                   13.207547  67.924528  18.867925
+3                    9.746110  60.933661  29.320229
+4                   38.157895  32.894737  28.947368
+2025-05-07 14:05:57,193 - patient_analysis - INFO - Processed data saved to: C:\Users\Nick\PycharmProjects\reha_assist_iru\logs\01_data_exploration\20250507_140555\processed_data.pkl
+2025-05-07 14:05:57,193 - patient_analysis - INFO - 
+=== ANALYSIS COMPLETE ===
+2025-05-07 14:05:57,193 - patient_analysis - INFO - Next steps: Feature engineering and model development

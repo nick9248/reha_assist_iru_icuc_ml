@@ -1,0 +1,58 @@
+2025-05-07 14:30:36,666 - feature_engineering - INFO - === FEATURE ENGINEERING PIPELINE ===
+2025-05-07 14:30:36,667 - feature_engineering - INFO - Loading raw data from: C:\Users\Nick\PycharmProjects\reha_assist_iru\assets\icuc_ml_dataset.xlsx
+2025-05-07 14:30:36,944 - feature_engineering - INFO - Dataset loaded with shape: (7491, 12)
+2025-05-07 14:30:36,944 - feature_engineering - INFO - Original dataset has 12 features
+2025-05-07 14:30:36,944 - feature_engineering - INFO - Creating time-based features
+2025-05-07 14:30:36,950 - feature_engineering - INFO - Created 17 time-based features
+2025-05-07 14:30:36,951 - feature_engineering - INFO - Creating score-based features
+2025-05-07 14:30:36,954 - feature_engineering - INFO - Created 12 score-based features
+2025-05-07 14:30:36,954 - feature_engineering - INFO - Creating sequential features
+2025-05-07 14:30:37,832 - feature_engineering - INFO - Created 18 sequential features
+2025-05-07 14:30:37,832 - feature_engineering - INFO - Creating categorical features
+2025-05-07 14:30:37,840 - feature_engineering - INFO - Created 13 categorical features
+2025-05-07 14:30:37,840 - feature_engineering - INFO - Creating aggregate features
+2025-05-07 14:30:38,068 - feature_engineering - INFO - Created 16 aggregate features
+2025-05-07 14:30:38,068 - feature_engineering - INFO - Handling missing values
+2025-05-07 14:30:38,069 - feature_engineering - INFO - Found 11 features with missing values:
+2025-05-07 14:30:38,069 - feature_engineering - INFO -   - days_since_last_consult: 2379 missing values (31.76%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - recovery_stage: 24 missing values (0.32%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - p_score_vs_expected: 24 missing values (0.32%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - fl_score_vs_expected: 24 missing values (0.32%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - p_score_diff: 2379 missing values (31.76%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - fl_score_diff: 2379 missing values (31.76%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - p_status_changes: 2379 missing values (31.76%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - fl_status_changes: 2379 missing values (31.76%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - prev_nbe: 2379 missing values (31.76%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - p_score_rate: 2379 missing values (31.76%)
+2025-05-07 14:30:38,070 - feature_engineering - INFO -   - fl_score_rate: 2379 missing values (31.76%)
+2025-05-07 14:30:38,073 - feature_engineering - INFO -   - Filled days_since_last_consult with median value: 19.0
+2025-05-07 14:30:38,073 - feature_engineering - INFO -   - Filled p_score_vs_expected with median value: -0.26493039964077236
+2025-05-07 14:30:38,073 - feature_engineering - INFO -   - Filled fl_score_vs_expected with median value: -0.05455189514700676
+2025-05-07 14:30:38,074 - feature_engineering - INFO -   - Filled p_score_diff with median value: 0.0
+2025-05-07 14:30:38,074 - feature_engineering - INFO -   - Filled fl_score_diff with median value: 0.0
+2025-05-07 14:30:38,074 - feature_engineering - INFO -   - Filled p_status_changes with median value: 0.0
+2025-05-07 14:30:38,074 - feature_engineering - INFO -   - Filled fl_status_changes with median value: 1.0
+2025-05-07 14:30:38,074 - feature_engineering - INFO -   - Filled prev_nbe with median value: 1.0
+2025-05-07 14:30:38,075 - feature_engineering - INFO -   - Filled p_score_rate with median value: 0.0
+2025-05-07 14:30:38,075 - feature_engineering - INFO -   - Filled fl_score_rate with median value: 0.0
+2025-05-07 14:30:38,075 - feature_engineering - INFO -   - Filled recovery_stage with mode value: early
+2025-05-07 14:30:38,075 - feature_engineering - INFO - After feature engineering: 93 features
+2025-05-07 14:30:38,075 - feature_engineering - INFO - Created 81 new features
+2025-05-07 14:30:38,075 - feature_engineering - INFO - Evaluating engineered features
+2025-05-07 14:30:38,234 - feature_engineering - INFO - Top 10 most important features:
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - patient_prop_nbe_1: 0.3665
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - prev_nbe: 0.1839
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - patient_prop_nbe_0: 0.1612
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - days_since_accident: 0.0202
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - nbe_same_as_prev: 0.0186
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - days_per_consult: 0.0142
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - consult_density: 0.0130
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - patient_prop_improving: 0.0109
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - consult_spacing_mean: 0.0107
+2025-05-07 14:30:38,234 - feature_engineering - INFO -   - p_score_cumsum: 0.0090
+2025-05-07 14:30:39,207 - feature_engineering - INFO - Preparing final dataset for modeling
+2025-05-07 14:30:39,211 - feature_engineering - INFO - Final dataset shape: (7491, 56)
+2025-05-07 14:30:39,211 - feature_engineering - INFO - Number of selected features: 55
+2025-05-07 14:30:39,213 - feature_engineering - INFO - Final engineered dataset saved to: C:\Users\Nick\PycharmProjects\reha_assist_iru\logs\02_feature_engineering\20250507_143036\engineered_features.pkl
+2025-05-07 14:30:39,214 - feature_engineering - INFO - === FEATURE ENGINEERING COMPLETE ===
+2025-05-07 14:30:39,214 - feature_engineering - INFO - Next step: Model selection and development
