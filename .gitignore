@@ -8,4 +8,5 @@
 # The environment variables
 /.env
 
+# The logs
 /logs
