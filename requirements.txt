@@ -1,0 +1,25 @@
+# Core dependencies
+numpy>=1.22.0
+pandas>=1.4.0
+scikit-learn>=1.0.2
+matplotlib>=3.5.0
+seaborn>=0.11.2
+
+# Machine learning libraries
+xgboost>=1.5.0
+lightgbm>=3.3.2
+imbalanced-learn>=0.9.0
+
+# Utilities
+python-dotenv>=0.19.2
+pathlib>=1.0.1
+
+# Deep learning (optional)
+tensorflow>=2.8.0
+keras>=2.8.0
+
+# Data processing
+openpyxl>=3.0.9  # For Excel file support
+
+# Logging and monitoring
+tqdm>=4.62.3

@@ -7,3 +7,5 @@
 
 # The environment variables
 /.env
+
+/logs
