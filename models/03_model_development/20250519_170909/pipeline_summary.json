@@ -1,0 +1,46 @@
+{
+  "start_time": "2025-05-19 17:09:09",
+  "stages": {
+    "data_preparation": {
+      "status": "failed",
+      "error": "prepare_datasets() got an unexpected keyword argument 'apply_scaling'",
+      "time_seconds": 0.0020055770874023438
+    }
+  },
+  "config": {
+    "data_preparation": {
+      "apply_scaling": true,
+      "handle_imbalance": true,
+      "feature_selection": true,
+      "n_features": 30,
+      "nan_strategy": "median"
+    },
+    "baseline_models": {
+      "class_weight": "balanced",
+      "find_threshold": true
+    },
+    "advanced_models": {
+      "use_smote": true,
+      "class_weight": "balanced"
+    },
+    "model_evaluation": {
+      "evaluate_api_performance": true
+    },
+    "model_calibration": {
+      "method": "isotonic",
+      "calibrate_api_model": true
+    },
+    "model_selection": {
+      "primary_metric": "roc_auc",
+      "metric_weights": {
+        "roc_auc": 0.5,
+        "f1": 0.25,
+        "brier_score": -0.25
+      },
+      "consider_api_model": true
+    }
+  },
+  "status": "failed",
+  "error": "prepare_datasets() got an unexpected keyword argument 'apply_scaling'",
+  "end_time": "2025-05-19 17:09:09"
+}

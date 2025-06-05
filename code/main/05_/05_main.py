@@ -6,6 +6,8 @@ Orchestrates the feature importance analysis and probability calibration.
 import os
 import logging
 import argparse
+import numpy as np
+import pandas as pd
 from utils.project_setup import setup_logging, create_project_structure
 from feature_importance_analysis import analyze_feature_importance, load_data, load_model
 from probability_calibration import run_probability_calibration_analysis
@@ -71,6 +73,40 @@ def find_latest_paths():
     return datasets_path, model_path
 
 
+def extract_feature_importance_summary(importance_df, top_n=5):
+    """
+    Extract a clean summary of feature importance
+
+    Parameters:
+    -----------
+    importance_df : pandas.DataFrame
+        Feature importance dataframe
+    top_n : int
+        Number of top features to include
+
+    Returns:
+    --------
+    list
+        List of tuples (feature_name, importance, direction)
+    """
+    if importance_df is None or len(importance_df) == 0:
+        return []
+
+    # Get top features
+    top_df = importance_df.head(top_n)
+
+    # Create summary list
+    summary = []
+    for _, row in top_df.iterrows():
+        feature = row['Feature']
+        importance = row['Importance']
+        direction = row['Direction'] if 'Direction' in row else 'Unknown'
+
+        summary.append((feature, importance, direction))
+
+    return summary
+
+
 def main():
     """Main function to run the complete pipeline"""
     # Parse arguments
@@ -131,40 +167,78 @@ def main():
     logger.info(f"Feature importance results saved to: {feature_dir}")
     logger.info(f"Probability calibration results saved to: {calibration_dir}")
 
-    # Create brief summary
+    # Extract feature importance summary
+    feature_summary = extract_feature_importance_summary(importance_df)
+
+    # Create summary dictionary
     summary = {
         'feature_importance': {
-            'top_features': importance_df.head(10)['Feature'].tolist(),
-            'top_importance_values': importance_df.head(10)['Importance'].tolist()
+            'top_features': [f[0] for f in feature_summary],
+            'top_importance_values': [f[1] for f in feature_summary],
+            'directions': [f[2] for f in feature_summary]
         },
-        'probability_calibration': {
-            'original_brier_score': calibration_results['original_model']['probability_stats']['overall']['mean'],
-        }
+        'probability_calibration': {}
     }
 
-    # If calibration was performed, add calibration results
-    if not args.no_calibrate and 'calibration' in calibration_results:
-        best_method = calibration_results['calibration']['best_method']
-        summary['probability_calibration']['calibrated_brier_score'] = \
-        calibration_results['calibration'][best_method]['calibrated']['brier_score']
-        summary['probability_calibration']['improvement_percent'] = \
-        calibration_results['calibration'][best_method]['improvement']['brier_score_pct']
-        summary['probability_calibration']['calibration_method'] = best_method
+    # Add probability calibration stats if available
+    if calibration_results and 'original_model' in calibration_results:
+        if 'probability_stats' in calibration_results['original_model']:
+            summary['probability_calibration']['original_brier_score'] = calibration_results['original_model']['probability_stats']['overall']['mean']
 
-    # Print summary
+        # Add calibration improvement if performed
+        if not args.no_calibrate and 'calibration' in calibration_results:
+            best_method = calibration_results['calibration']['best_method']
+
+            if best_method in calibration_results['calibration']:
+                cal_results = calibration_results['calibration'][best_method]
+
+                if 'calibrated' in cal_results and 'brier_score' in cal_results['calibrated']:
+                    summary['probability_calibration']['calibrated_brier_score'] = cal_results['calibrated']['brier_score']
+
+                if 'improvement' in cal_results and 'brier_score_pct' in cal_results['improvement']:
+                    summary['probability_calibration']['improvement_percent'] = cal_results['improvement']['brier_score_pct']
+
+                summary['probability_calibration']['calibration_method'] = best_method
+
+    # Print summary of findings
     logger.info("\nSummary of findings:")
-    logger.info("Top 5 most important features:")
-    for i, feature in enumerate(summary['feature_importance']['top_features'][:5]):
-        importance = summary['feature_importance']['top_importance_values'][i]
-        logger.info(f"  {i + 1}. {feature} ({importance:.4f})")
 
+    # Feature importance summary
+    logger.info("Top 5 most important features:")
+    for i, (feature, importance, direction) in enumerate(feature_summary):
+        logger.info(f"  {i + 1}. {feature} ({importance:.4f}, {direction})")
+
+    # Probability calibration summary
     logger.info("\nProbability calibration:")
-    logger.info(f"  Original Brier score: {summary['probability_calibration']['original_brier_score']:.4f}")
+    if 'original_brier_score' in summary['probability_calibration']:
+        logger.info(f"  Original Brier score: {summary['probability_calibration']['original_brier_score']:.4f}")
 
     if 'calibrated_brier_score' in summary['probability_calibration']:
         logger.info(f"  Calibrated Brier score: {summary['probability_calibration']['calibrated_brier_score']:.4f}")
         logger.info(f"  Improvement: {summary['probability_calibration']['improvement_percent']:.2f}%")
         logger.info(f"  Calibration method: {summary['probability_calibration']['calibration_method']}")
+
+    # Save summary to file
+    import json
+    with open(os.path.join(step5_dir, 'summary.json'), 'w') as f:
+        # Convert numpy values to Python types for JSON serialization
+        json_summary = {}
+        for key, value in summary.items():
+            if isinstance(value, dict):
+                json_summary[key] = {}
+                for k, v in value.items():
+                    if isinstance(v, (list, tuple)):
+                        json_summary[key][k] = [float(x) if isinstance(x, np.number) else x for x in v]
+                    elif isinstance(v, np.number):
+                        json_summary[key][k] = float(v)
+                    else:
+                        json_summary[key][k] = v
+            else:
+                json_summary[key] = value
+
+        json.dump(json_summary, f, indent=4)
+
+    logger.info(f"Summary saved to: {os.path.join(step5_dir, 'summary.json')}")
 
     return summary
 

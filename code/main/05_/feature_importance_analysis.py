@@ -88,7 +88,7 @@ def compute_shap_values(model, X, feature_names, logger, n_samples=None):
 
     Returns:
     --------
-    shap.Explanation
+    shap.Explanation or list
         SHAP values explanation object
     """
     logger.info("Computing SHAP values")
@@ -114,21 +114,38 @@ def compute_shap_values(model, X, feature_names, logger, n_samples=None):
     if isinstance(model_component, RandomForestClassifier):
         logger.info("Using TreeExplainer for RandomForestClassifier")
         explainer = shap.TreeExplainer(model_component)
+
+        try:
+            # Try the new style SHAP API which returns an Explanation object
+            shap_values = explainer(X_sample)
+            logger.info(f"SHAP new API returned type: {type(shap_values)}")
+            if hasattr(shap_values, 'values'):
+                logger.info(f"SHAP values shape: {shap_values.values.shape}")
+        except Exception as e:
+            logger.info(f"New SHAP API failed: {str(e)}, trying older API")
+
+            # Fall back to the older SHAP API for trees
+            shap_values = explainer.shap_values(X_sample)
+            logger.info(f"SHAP values type from old API: {type(shap_values)}")
+            if isinstance(shap_values, list):
+                logger.info(f"SHAP values is a list of length {len(shap_values)}")
+                for i, sv in enumerate(shap_values):
+                    logger.info(f"  Class {i} shape: {sv.shape}")
     else:
         logger.info("Using KernelExplainer as fallback")
         # For non-tree models or more complex pipelines, use KernelExplainer
         # Create a function that returns probabilities for class 1
         predict_fn = lambda x: model.predict_proba(x)[:, 1]
         # Sample background data
-        background = shap.sample(X_sample, 100)
+        background = shap.sample(X_sample, min(100, len(X_sample)))
         explainer = shap.KernelExplainer(predict_fn, background)
 
-    # Calculate SHAP values
-    shap_values = explainer(X_sample)
+        # For KernelExplainer, always use the old API
+        shap_values = explainer.shap_values(X_sample)
+        logger.info(f"KernelExplainer returned shape: {np.array(shap_values).shape}")
 
     logger.info("SHAP values computed successfully")
     return shap_values, X_sample
-
 
 def plot_shap_summary(shap_values, X_sample, feature_names, output_dir, logger):
     """
@@ -208,79 +225,118 @@ def plot_shap_dependence(shap_values, X_sample, feature_names, output_dir, logge
     logger.info(f"Creating SHAP dependence plots for top {top_n} features")
 
     try:
-        # Calculate mean absolute SHAP value for each feature
-        if isinstance(shap_values, shap.Explanation):
-            # For TreeExplainer
-            if hasattr(shap_values, 'values'):
-                if len(shap_values.values.shape) > 2:
-                    # Multi-class output
-                    feature_importances = np.abs(shap_values.values[:, 1, :]).mean(0)
-                else:
-                    feature_importances = np.abs(shap_values.values).mean(0)
-            else:
-                # Some newer SHAP versions structure this differently
-                base_values = shap_values.base_values
-                if len(base_values.shape) > 1:
-                    # Multi-class
-                    feature_importances = np.abs(shap_values[:, :, 1]).mean(0)
-                else:
-                    feature_importances = np.abs(shap_values).mean(0)
+        # First get the feature importances to identify top features
+        if hasattr(shap_values, 'values') and len(shap_values.values.shape) == 3:
+            # For 3D SHAP values (samples, features, classes) - focus on class 1 (NBE=1)
+            values = shap_values.values
+            feature_importances = np.mean(np.abs(values[:, :, 1]), axis=0)
+            n_features = len(feature_importances)
+        elif isinstance(shap_values, list) and len(shap_values) == 2:
+            # For binary classification with tree models (list format)
+            feature_importances = np.mean(np.abs(shap_values[1]), axis=0)
+            n_features = len(feature_importances)
+        elif hasattr(shap_values, 'values') and len(shap_values.values.shape) == 2:
+            # For 2D SHAP values
+            feature_importances = np.mean(np.abs(shap_values.values), axis=0)
+            n_features = len(feature_importances)
         else:
-            # For KernelExplainer or older SHAP versions
-            if isinstance(shap_values, list):
-                # Multi-class output
-                if len(shap_values) > 1:
-                    feature_importances = np.abs(shap_values[1]).mean(0)
-                else:
-                    feature_importances = np.abs(shap_values[0]).mean(0)
+            # Other formats - try to extract importances
+            if isinstance(shap_values, np.ndarray):
+                feature_importances = np.mean(np.abs(shap_values), axis=0) if len(shap_values.shape) > 1 else np.abs(
+                    shap_values)
+                n_features = len(feature_importances)
             else:
-                feature_importances = np.abs(shap_values).mean(0)
+                logger.error(f"Unknown SHAP values format: {type(shap_values)}")
+                return
 
-        # Ensure feature_importances is 1D
-        if len(feature_importances.shape) > 1:
-            feature_importances = feature_importances.mean(axis=1)
-
-        # Check if length matches
-        if len(feature_importances) != len(feature_names):
+        # Check if feature names match the number of features
+        if len(feature_names) != n_features:
             logger.warning(
-                f"Feature importances length ({len(feature_importances)}) doesn't match feature names length ({len(feature_names)})")
-            logger.warning("Skipping dependence plots due to mismatch")
-            return
+                f"Feature names length ({len(feature_names)}) doesn't match feature importances length ({n_features})")
+
+            if len(X_sample.columns) == n_features:
+                logger.info("Using X_sample columns as feature names")
+                feature_names = X_sample.columns.tolist()
+            else:
+                logger.info("Creating generic feature names")
+                feature_names = [f"Feature_{i}" for i in range(n_features)]
 
         # Get indices of top features
         top_indices = np.argsort(feature_importances)[-top_n:]
+        logger.info(f"Top {top_n} feature indices: {top_indices}")
 
         # Plot dependence plots for top features
-        for i in reversed(top_indices):
+        for i, idx in enumerate(reversed(top_indices)):
             plt.figure(figsize=(12, 6))
-            feature_name = feature_names[i]
-            logger.info(f"  Creating dependence plot for {feature_name}")
+            feature_name = feature_names[idx]
+            logger.info(f"  Creating dependence plot for {feature_name} (index {idx})")
 
             try:
-                # Plot SHAP dependence plot
-                if isinstance(shap_values, shap.Explanation):
-                    shap.dependence_plot(
-                        i, shap_values.values, X_sample,
-                        feature_names=feature_names, show=False
-                    )
-                else:
-                    if isinstance(shap_values, list) and len(shap_values) > 1:
-                        # Use class 1 for binary classification
-                        shap.dependence_plot(
-                            i, shap_values[1], X_sample,
-                            feature_names=feature_names, show=False
-                        )
-                    else:
-                        shap.dependence_plot(
-                            i, shap_values, X_sample,
-                            feature_names=feature_names, show=False
-                        )
+                # For 3D SHAP values - use values for class 1 (NBE=1)
+                if hasattr(shap_values, 'values') and len(shap_values.values.shape) == 3:
+                    # Extract values for class 1 (NBE=1)
+                    class_values = shap_values.values[:, :, 1]
 
-                plt.title(f"SHAP Dependence Plot: {feature_name}")
+                    # Create scatter plot
+                    plt.scatter(X_sample.iloc[:, idx], class_values[:, idx], alpha=0.5)
+                    plt.xlabel(feature_name)
+                    plt.ylabel(f'SHAP value for {feature_name}')
+                    plt.title(f'SHAP Dependence Plot: {feature_name}')
+
+                    # Add trend line
+                    z = np.polyfit(X_sample.iloc[:, idx], class_values[:, idx], 1)
+                    p = np.poly1d(z)
+                    x_range = np.linspace(X_sample.iloc[:, idx].min(), X_sample.iloc[:, idx].max(), 100)
+                    plt.plot(x_range, p(x_range), "r--", alpha=0.8)
+
+                # For list format SHAP values
+                elif isinstance(shap_values, list) and len(shap_values) == 2:
+                    # Use class 1 (NBE=1) values
+                    class_values = shap_values[1]
+
+                    # Create scatter plot
+                    plt.scatter(X_sample.iloc[:, idx], class_values[:, idx], alpha=0.5)
+                    plt.xlabel(feature_name)
+                    plt.ylabel(f'SHAP value for {feature_name}')
+                    plt.title(f'SHAP Dependence Plot: {feature_name}')
+
+                    # Add trend line
+                    z = np.polyfit(X_sample.iloc[:, idx], class_values[:, idx], 1)
+                    p = np.poly1d(z)
+                    x_range = np.linspace(X_sample.iloc[:, idx].min(), X_sample.iloc[:, idx].max(), 100)
+                    plt.plot(x_range, p(x_range), "r--", alpha=0.8)
+
+                # For 2D SHAP values
+                else:
+                    # Try to use shap's dependence_plot function
+                    try:
+                        shap.dependence_plot(
+                            idx, shap_values.values if hasattr(shap_values, 'values') else shap_values,
+                            X_sample, feature_names=feature_names, show=False
+                        )
+                    except:
+                        # Fall back to simple scatter plot
+                        if hasattr(shap_values, 'values'):
+                            values = shap_values.values
+                        else:
+                            values = shap_values
+
+                        plt.scatter(X_sample.iloc[:, idx], values[:, idx], alpha=0.5)
+                        plt.xlabel(feature_name)
+                        plt.ylabel(f'SHAP value for {feature_name}')
+                        plt.title(f'SHAP Dependence Plot: {feature_name}')
+
+                        # Add trend line
+                        z = np.polyfit(X_sample.iloc[:, idx], values[:, idx], 1)
+                        p = np.poly1d(z)
+                        x_range = np.linspace(X_sample.iloc[:, idx].min(), X_sample.iloc[:, idx].max(), 100)
+                        plt.plot(x_range, p(x_range), "r--", alpha=0.8)
+
                 plt.tight_layout()
                 plt.savefig(os.path.join(output_dir, f'shap_dependence_{feature_name.replace(" ", "_")}.png'),
                             dpi=300, bbox_inches='tight')
                 plt.close()
+
             except Exception as e:
                 logger.error(f"Error creating dependence plot for {feature_name}: {str(e)}")
                 plt.close()
@@ -290,7 +346,6 @@ def plot_shap_dependence(shap_values, X_sample, feature_names, output_dir, logge
     except Exception as e:
         logger.error(f"Error in dependence plot creation: {str(e)}")
         logger.info("Skipping dependence plots")
-
 
 def plot_top_feature_distributions(X, feature_names, top_shap_features, target, output_dir, logger):
     """
@@ -366,6 +421,7 @@ def plot_top_feature_distributions(X, feature_names, top_shap_features, target, 
 
     logger.info(f"Feature distribution plots saved to {output_dir}")
 
+
 def create_feature_importance_report(shap_values, X_sample, feature_names, output_dir, logger, top_n=20):
     """
     Create feature importance report based on SHAP values
@@ -392,62 +448,119 @@ def create_feature_importance_report(shap_values, X_sample, feature_names, outpu
     """
     logger.info("Creating feature importance report")
 
-    # Calculate mean absolute SHAP value for each feature
-    if isinstance(shap_values, shap.Explanation):
-        # Handle shap.Explanation object
-        if hasattr(shap_values, 'values'):
-            # For TreeExplainer
-            if len(shap_values.values.shape) > 2:
-                # Multi-class output (shape: n_samples, n_classes, n_features)
-                # We'll use the values for class 1 (positive class)
-                feature_importances = np.abs(shap_values.values[:, 1, :]).mean(0)
-                feature_impacts = shap_values.values[:, 1, :].mean(0)
-            else:
-                # Binary classification or already class-specific
-                feature_importances = np.abs(shap_values.values).mean(0)
-                feature_impacts = shap_values.values.mean(0)
-        else:
-            # Some newer SHAP versions structure this differently
-            base_values = shap_values.base_values
-            if len(base_values.shape) > 1:
-                # Multi-class
-                feature_importances = np.abs(shap_values[:, :, 1]).mean(0)
-                feature_impacts = shap_values[:, :, 1].mean(0)
-            else:
-                # Binary
-                feature_importances = np.abs(shap_values).mean(0)
-                feature_impacts = shap_values.mean(0)
+    # Debug information about shapes
+    if isinstance(shap_values, list):
+        logger.info(f"SHAP values is a list of length {len(shap_values)}")
+        for i, sv in enumerate(shap_values):
+            logger.info(f"  Class {i} shape: {sv.shape}")
+    elif hasattr(shap_values, 'values'):
+        logger.info(f"SHAP Explanation object with values shape: {shap_values.values.shape}")
     else:
-        # For older SHAP versions or KernelExplainer
-        if isinstance(shap_values, list):
-            # Multi-class output - select the positive class (typically index 1)
-            if len(shap_values) > 1:
-                feature_importances = np.abs(shap_values[1]).mean(0)
-                feature_impacts = shap_values[1].mean(0)
+        logger.info(f"SHAP values type: {type(shap_values)}")
+
+    # Create feature importance dataframe
+    if hasattr(shap_values, 'values') and len(shap_values.values.shape) == 3:
+        # For 3D SHAP values (samples, features, classes)
+        logger.info(f"Processing 3D SHAP values with shape {shap_values.values.shape}")
+
+        # Extract values for the positive class (NBE=1, index 1)
+        values = shap_values.values
+        n_samples, n_features, n_classes = values.shape
+
+        # Average absolute values across samples for class 1 (NBE=1)
+        feature_importances = np.mean(np.abs(values[:, :, 1]), axis=0)
+        # Average raw values across samples for class 1 (NBE=1)
+        feature_impacts = np.mean(values[:, :, 1], axis=0)
+
+        # Check if feature_names matches the number of features
+        if len(feature_names) != n_features:
+            logger.warning(
+                f"Feature names length ({len(feature_names)}) doesn't match number of features ({n_features})")
+            if len(X_sample.columns) == n_features:
+                logger.info("Using X_sample columns as feature names")
+                feature_names = X_sample.columns.tolist()
             else:
-                feature_importances = np.abs(shap_values[0]).mean(0)
-                feature_impacts = shap_values[0].mean(0)
+                logger.info("Creating generic feature names")
+                feature_names = [f"Feature_{i}" for i in range(n_features)]
+
+    # For binary classification tree models (older SHAP API)
+    elif isinstance(shap_values, list) and len(shap_values) == 2:
+        logger.info("Processing binary classification SHAP values (list format)")
+
+        # Number of features should match the second dimension of SHAP values
+        n_features = shap_values[0].shape[1]
+
+        # Extract feature importances for class 1 (NBE=1)
+        feature_importances = np.mean(np.abs(shap_values[1]), axis=0)
+        feature_impacts = np.mean(shap_values[1], axis=0)
+
+        # Ensure feature names match
+        if len(feature_names) != n_features:
+            logger.warning(
+                f"Feature names length ({len(feature_names)}) doesn't match number of features ({n_features})")
+            if len(X_sample.columns) == n_features:
+                logger.info("Using X_sample columns as feature names")
+                feature_names = X_sample.columns.tolist()
+            else:
+                logger.info("Creating generic feature names")
+                feature_names = [f"Feature_{i}" for i in range(n_features)]
+
+    # For newer SHAP API (Explanation object with 2D values)
+    elif hasattr(shap_values, 'values') and len(shap_values.values.shape) == 2:
+        logger.info("Processing 2D SHAP values")
+
+        values = shap_values.values
+        n_features = values.shape[1]
+
+        # Get feature importances
+        feature_importances = np.mean(np.abs(values), axis=0)
+        feature_impacts = np.mean(values, axis=0)
+
+        # Check feature names
+        if len(feature_names) != n_features:
+            logger.warning(
+                f"Feature names length ({len(feature_names)}) doesn't match number of features ({n_features})")
+            if len(X_sample.columns) == n_features:
+                logger.info("Using X_sample columns as feature names")
+                feature_names = X_sample.columns.tolist()
+            else:
+                logger.info("Creating generic feature names")
+                feature_names = [f"Feature_{i}" for i in range(n_features)]
+
+    # For older SHAP versions (single array)
+    else:
+        logger.info("Processing single SHAP values array")
+
+        if isinstance(shap_values, np.ndarray):
+            n_features = shap_values.shape[1] if len(shap_values.shape) > 1 else len(shap_values)
+            feature_importances = np.mean(np.abs(shap_values), axis=0) if len(shap_values.shape) > 1 else np.abs(
+                shap_values)
+            feature_impacts = np.mean(shap_values, axis=0) if len(shap_values.shape) > 1 else shap_values
         else:
-            # Binary classification or regression
-            feature_importances = np.abs(shap_values).mean(0)
-            feature_impacts = shap_values.mean(0)
+            logger.error(f"Unknown SHAP values format: {type(shap_values)}")
+            # Return an empty dataframe with feature names
+            return pd.DataFrame({
+                'Feature': feature_names,
+                'Importance': np.nan,
+                'Impact': np.nan,
+                'Direction': 'Unknown'
+            })
 
-    # Ensure feature_importances and feature_impacts are 1D arrays
-    if len(feature_importances.shape) > 1:
-        feature_importances = feature_importances.mean(axis=1)
-    if len(feature_impacts.shape) > 1:
-        feature_impacts = feature_impacts.mean(axis=1)
+        # Check feature names
+        if len(feature_names) != n_features:
+            logger.warning(
+                f"Feature names length ({len(feature_names)}) doesn't match number of features ({n_features})")
+            if X_sample is not None and len(X_sample.columns) == n_features:
+                logger.info("Using X_sample columns as feature names")
+                feature_names = X_sample.columns.tolist()
+            else:
+                logger.info("Creating generic feature names")
+                feature_names = [f"Feature_{i}" for i in range(n_features)]
 
-    # Ensure feature_names matches the length of feature_importances
-    if len(feature_names) != len(feature_importances):
-        logger.warning(
-            f"Feature names length ({len(feature_names)}) doesn't match feature importances length ({len(feature_importances)})")
-        # Use generic feature names if needed
-        feature_names = [f"Feature_{i}" for i in range(len(feature_importances))]
-
-    # Create dataframe
+    # Create dataframe with correct feature names and importances
+    logger.info(f"Creating importance dataframe with {len(feature_importances)} features")
     importance_df = pd.DataFrame({
-        'Feature': feature_names,
+        'Feature': feature_names[:len(feature_importances)],
         'Importance': feature_importances,
         'Impact': feature_impacts
     })
@@ -484,17 +597,70 @@ def create_feature_importance_report(shap_values, X_sample, feature_names, outpu
             }
 
     # Create feature stats dataframe
-    stats_df = pd.DataFrame.from_dict(feature_stats, orient='index')
-    stats_df.reset_index(inplace=True)
-    stats_df.rename(columns={'index': 'Feature'}, inplace=True)
+    if feature_stats:
+        stats_df = pd.DataFrame.from_dict(feature_stats, orient='index')
+        stats_df.reset_index(inplace=True)
+        stats_df.rename(columns={'index': 'Feature'}, inplace=True)
 
-    # Save feature stats to CSV
-    stats_df.to_csv(os.path.join(output_dir, 'feature_stats.csv'), index=False)
+        # Save feature stats to CSV
+        stats_df.to_csv(os.path.join(output_dir, 'feature_stats.csv'), index=False)
 
     logger.info(f"Feature importance report saved to {output_dir}")
 
     return importance_df
 
+# Add this helper function to extract_direct_feature_importance
+def extract_direct_feature_importance(model, feature_names, logger):
+    """Extract feature importance directly from model if SHAP fails"""
+    logger.info("Extracting feature importance directly from model")
+
+    # Extract the model from pipeline if needed
+    if hasattr(model, 'named_steps') and 'model' in model.named_steps:
+        model_component = model.named_steps['model']
+        if hasattr(model_component, 'base_estimator'):
+            model_component = model_component.base_estimator
+    else:
+        model_component = model
+
+    # For tree-based models
+    if hasattr(model_component, 'feature_importances_'):
+        importances = model_component.feature_importances_
+        importance_df = pd.DataFrame({
+            'Feature': feature_names[:len(importances)],
+            'Importance': importances,
+            'Impact': importances,  # Use the same as importance since direction is unknown
+            'Direction': ['Unknown'] * len(importances)  # Can't determine direction without SHAP
+        }).sort_values('Importance', ascending=False)
+
+        # Add percentile columns
+        importance_df['Importance_Percentile'] = importance_df['Importance'] / importance_df['Importance'].sum() * 100
+        importance_df['Cumulative_Importance'] = importance_df['Importance_Percentile'].cumsum()
+
+        return importance_df
+
+    # For linear models
+    elif hasattr(model_component, 'coef_'):
+        coefs = model_component.coef_[0] if len(model_component.coef_.shape) > 1 else model_component.coef_
+        importance_df = pd.DataFrame({
+            'Feature': feature_names[:len(coefs)],
+            'Importance': np.abs(coefs),
+            'Impact': coefs,
+            'Direction': ['Positive' if c > 0 else 'Negative' for c in coefs]
+        }).sort_values('Importance', ascending=False)
+
+        # Add percentile columns
+        importance_df['Importance_Percentile'] = importance_df['Importance'] / importance_df['Importance'].sum() * 100
+        importance_df['Cumulative_Importance'] = importance_df['Importance_Percentile'].cumsum()
+
+        return importance_df
+
+    # Return basic dataframe if can't extract importance
+    return pd.DataFrame({
+        'Feature': feature_names,
+        'Importance': np.nan,
+        'Impact': np.nan,
+        'Direction': 'Unknown'
+    })
 
 def analyze_feature_importance(model, datasets, output_dir, logger, n_samples=None):
     """
@@ -588,7 +754,6 @@ def analyze_feature_importance(model, datasets, output_dir, logger, n_samples=No
     logger.info("Feature importance analysis complete")
 
     return importance_df
-
 if __name__ == "__main__":
     from utils.project_setup import setup_logging, create_project_structure
     import argparse

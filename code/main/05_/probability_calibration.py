@@ -106,8 +106,8 @@ def plot_calibration_curve(y_true, y_prob, output_dir, logger, model_name="Model
     # Add diagonal line for perfect calibration
     plt.plot([0, 1], [0, 1], 'k--', label='Perfectly calibrated')
 
-    # Add histogram of predicted probabilities
-    plt.hist(y_prob, range=(0, 1), bins=n_bins, histtype='step', normed=True,
+    # Add histogram of predicted probabilities - FIXED parameter from 'normed' to 'density'
+    plt.hist(y_prob, range=(0, 1), bins=n_bins, histtype='step', density=True,
              label='Predicted probability distribution')
 
     # Configure plot
@@ -126,7 +126,6 @@ def plot_calibration_curve(y_true, y_prob, output_dir, logger, model_name="Model
     logger.info(f"Calibration curve saved to {os.path.join(output_dir, f'calibration_curve_{model_filename}.png')}")
 
     return prob_true, prob_pred, brier
-
 
 def create_reliability_diagram(y_true, y_prob, output_dir, logger, model_name="Model", n_bins=10):
     """

@@ -1,0 +1,25 @@
+{
+    "original_model": {
+        "brier_score": 0.01349130157985183,
+        "log_loss": 0.04949365153201938,
+        "optimal_thresholds": {
+            "accuracy": 0.44,
+            "precision": 0.8200000000000001,
+            "recall": 0.01,
+            "f1": 0.44
+        }
+    },
+    "calibrated_model": {
+        "method": "sigmoid",
+        "brier_score": 0.010993909839390253,
+        "log_loss": 0.03840075768169581,
+        "brier_improvement": 18.511125303071054,
+        "log_loss_improvement": 22.41276104501431,
+        "optimal_thresholds": {
+            "accuracy": 0.18,
+            "precision": 0.9400000000000001,
+            "recall": 0.01,
+            "f1": 0.18
+        }
+    }
+}

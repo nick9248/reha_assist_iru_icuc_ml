@@ -1,0 +1,3 @@
+Feature,Importance,Impact,Importance_Percentile,Cumulative_Importance,Direction
+Feature_0,0.02268474361729552,-0.006960890654251276,50.0,50.0,Negative
+Feature_1,0.022684743617295517,0.006960890654251261,49.99999999999999,100.0,Positive
