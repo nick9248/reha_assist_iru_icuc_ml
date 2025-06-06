@@ -1,6 +1,8 @@
 # The dataset itself
 /assets/icuc_ml_dataset.xlsx
 
+assets/output
+
 # The test codes
 /code/test/test_1.py
 /code/test/test_2.py
