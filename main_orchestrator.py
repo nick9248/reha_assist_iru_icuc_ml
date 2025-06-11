@@ -1,25 +1,31 @@
 """
-Step 1: Data Exploration & Understanding - Main Orchestrator
+Step 1: Data Exploration & Understanding - Main Orchestrator (Fixed)
 Coordinates data loading, exploration, and validation for NBE prediction project
 """
 
 import sys
+import os
 from pathlib import Path
 import pandas as pd
 from datetime import datetime
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.append(str(project_root))
+# Add project root to Python path
+project_root = Path(__file__).parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 # Import project modules
-from code.step1_data_exploration.data_loader import DataLoader
-from code.step1_data_exploration.data_explorer import DataExplorer
-from code.step1_data_exploration.data_validator import DataValidator
-
+try:
+    from code.step1_data_exploration.data_loader import DataLoader
+    from code.step1_data_exploration.data_explorer import DataExplorer
+    from code.step1_data_exploration.data_validator import DataValidator
+except ImportError as e:
+    print(f"Import error: {e}")
+    print("Please ensure all __init__.py files are created and modules are in correct locations")
+    sys.exit(1)
 
 class Step1Orchestrator:
     """
@@ -28,7 +34,7 @@ class Step1Orchestrator:
 
     def __init__(self):
         # Setup paths from environment or use defaults
-        self.project_root = Path(__file__).parent.parent
+        self.project_root = Path(__file__).parent
         self.data_path = self.project_root / 'data'
         self.logs_path = self.project_root / 'logs'
         self.plots_path = self.project_root / 'plots'
@@ -61,6 +67,10 @@ class Step1Orchestrator:
         logger = logging.getLogger('Step1Orchestrator')
         logger.setLevel(logging.INFO)
 
+        # Clear existing handlers to avoid duplicates
+        if logger.handlers:
+            logger.handlers.clear()
+
         # Console handler
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
@@ -77,9 +87,8 @@ class Step1Orchestrator:
         file_handler.setFormatter(formatter)
 
         # Add handlers
-        if not logger.handlers:
-            logger.addHandler(console_handler)
-            logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+        logger.addHandler(file_handler)
 
         return logger
 
@@ -93,9 +102,9 @@ class Step1Orchestrator:
         Returns:
             Dict containing all exploration results
         """
-        self.logger.info("=" * 60)
+        self.logger.info("="*60)
         self.logger.info("STARTING STEP 1: DATA EXPLORATION & UNDERSTANDING")
-        self.logger.info("=" * 60)
+        self.logger.info("="*60)
 
         exploration_results = {
             'timestamp': datetime.now().isoformat(),
@@ -112,7 +121,7 @@ class Step1Orchestrator:
                 'shape': df.shape,
                 'columns': list(df.columns)
             }
-            self.logger.info(f"✓ Data loaded successfully: {df.shape}")
+            self.logger.info(f"[SUCCESS] Data loaded successfully: {df.shape}")
 
             # Phase 2: Initial Data Quality Assessment
             self.logger.info("Phase 2: Initial data quality assessment")
@@ -123,7 +132,7 @@ class Step1Orchestrator:
                 'schema_validation': schema_validation,
                 'quality_metrics': quality_metrics
             }
-            self.logger.info(f"✓ Initial assessment completed")
+            self.logger.info(f"[SUCCESS] Initial assessment completed")
 
             # Phase 3: Comprehensive Data Validation
             self.logger.info("Phase 3: Comprehensive data validation")
@@ -132,7 +141,7 @@ class Step1Orchestrator:
 
             # Log validation summary
             overall_status = validation_report['overall_status']
-            self.logger.info(f"✓ Validation completed - Valid: {overall_status['is_valid']}")
+            self.logger.info(f"[SUCCESS] Validation completed - Valid: {overall_status['is_valid']}")
             if overall_status['critical_issues']:
                 self.logger.warning(f"Critical issues found: {overall_status['critical_issues']}")
 
@@ -140,7 +149,7 @@ class Step1Orchestrator:
             self.logger.info("Phase 4: Generating exploratory visualizations")
             plot_paths = self.data_explorer.generate_comprehensive_report(df)
             exploration_results['visualizations'] = plot_paths
-            self.logger.info(f"✓ Visualizations generated: {len([p for p in plot_paths.values() if p])}")
+            self.logger.info(f"[SUCCESS] Visualizations generated: {len([p for p in plot_paths.values() if p])}")
 
             # Phase 5: Save Results
             self.logger.info("Phase 5: Saving exploration results")
@@ -148,7 +157,7 @@ class Step1Orchestrator:
                 df, schema_validation, quality_metrics
             )
             exploration_results['output_file'] = str(output_file)
-            self.logger.info(f"✓ Results saved to: {output_file}")
+            self.logger.info(f"[SUCCESS] Results saved to: {output_file}")
 
             # Phase 6: Generate Summary Report
             self.logger.info("Phase 6: Generating summary report")
@@ -157,9 +166,9 @@ class Step1Orchestrator:
 
             # Final status
             exploration_results['status'] = 'completed'
-            self.logger.info("=" * 60)
+            self.logger.info("="*60)
             self.logger.info("STEP 1 COMPLETED SUCCESSFULLY")
-            self.logger.info("=" * 60)
+            self.logger.info("="*60)
 
             # Print summary to console
             self._print_summary_to_console(summary_report)
@@ -261,8 +270,7 @@ class Step1Orchestrator:
                 unique_patients = patient_analysis['unique_patients']
                 consultations_per_patient = patient_analysis.get('consultations_per_patient', {})
                 avg_consultations = consultations_per_patient.get('mean', 0)
-                findings.append(
-                    f"Data covers {unique_patients:,} unique patients with average {avg_consultations:.1f} consultations per patient")
+                findings.append(f"Data covers {unique_patients:,} unique patients with average {avg_consultations:.1f} consultations per patient")
 
         # Target variable finding
         if 'initial_assessment' in exploration_results:
@@ -336,19 +344,19 @@ class Step1Orchestrator:
 
     def _print_summary_to_console(self, summary_report: Dict[str, Any]):
         """Print formatted summary to console"""
-        print("\n" + "=" * 80)
+        print("\n" + "="*80)
         print("STEP 1: DATA EXPLORATION & UNDERSTANDING - SUMMARY REPORT")
-        print("=" * 80)
+        print("="*80)
 
         # Dataset Overview
-        print("\n📊 DATASET OVERVIEW:")
+        print("\n[DATASET OVERVIEW]:")
         overview = summary_report['dataset_overview']
         print(f"   • Total Records: {overview.get('total_rows', 'N/A'):,}")
         print(f"   • Total Features: {overview.get('total_columns', 'N/A')}")
         print(f"   • Columns: {', '.join(overview.get('columns', []))}")
 
         # Data Quality Summary
-        print("\n🔍 DATA QUALITY SUMMARY:")
+        print("\n[DATA QUALITY SUMMARY]:")
         quality = summary_report['data_quality_summary']
         print(f"   • Missing Values: {quality.get('missing_values_total', 'N/A')}")
         print(f"   • Duplicate Records: {quality.get('duplicate_rows', 'N/A')}")
@@ -356,41 +364,41 @@ class Step1Orchestrator:
         print(f"   • Memory Usage: {quality.get('memory_usage_mb', 'N/A'):.2f} MB")
 
         # Validation Summary
-        print("\n✅ VALIDATION SUMMARY:")
+        print("\n[VALIDATION SUMMARY]:")
         validation = summary_report['validation_summary']
-        print(f"   • Schema Compliant: {'✓' if validation.get('schema_compliant') else '✗'}")
-        print(f"   • Business Rules Valid: {'✓' if validation.get('business_rules_valid') else '✗'}")
-        print(f"   • Data Integrity: {'✓' if validation.get('data_integrity_intact') else '✗'}")
-        print(f"   • ML Ready: {'✓' if validation.get('ml_ready') else '✗'}")
-        print(f"   • Overall Status: {'✓ PASSED' if validation.get('overall_valid') else '✗ FAILED'}")
+        print(f"   • Schema Compliant: {'PASS' if validation.get('schema_compliant') else 'FAIL'}")
+        print(f"   • Business Rules Valid: {'PASS' if validation.get('business_rules_valid') else 'FAIL'}")
+        print(f"   • Data Integrity: {'PASS' if validation.get('data_integrity_intact') else 'FAIL'}")
+        print(f"   • ML Ready: {'PASS' if validation.get('ml_ready') else 'FAIL'}")
+        print(f"   • Overall Status: {'PASSED' if validation.get('overall_valid') else 'FAILED'}")
 
         # ML Readiness
-        print("\n🤖 ML READINESS SUMMARY:")
+        print("\n[ML READINESS SUMMARY]:")
         ml_readiness = summary_report['ml_readiness_summary']
         print(f"   • Readiness Score: {ml_readiness.get('readiness_score', 0):.1f}/100")
-        print(f"   • Sample Size: {'✓' if ml_readiness.get('sample_size_adequate') else '✗'}")
-        print(f"   • Target Quality: {'✓' if ml_readiness.get('target_suitable') else '✗'}")
-        print(f"   • Class Balance: {'✓' if ml_readiness.get('class_balance_ok') else '✗'}")
+        print(f"   • Sample Size: {'PASS' if ml_readiness.get('sample_size_adequate') else 'FAIL'}")
+        print(f"   • Target Quality: {'PASS' if ml_readiness.get('target_suitable') else 'FAIL'}")
+        print(f"   • Class Balance: {'PASS' if ml_readiness.get('class_balance_ok') else 'FAIL'}")
 
         # Key Findings
-        print("\n🔑 KEY FINDINGS:")
+        print("\n[KEY FINDINGS]:")
         for i, finding in enumerate(summary_report['key_findings'], 1):
             print(f"   {i}. {finding}")
 
         # Recommendations
         if summary_report['recommendations']:
-            print("\n💡 RECOMMENDATIONS:")
+            print("\n[RECOMMENDATIONS]:")
             for i, recommendation in enumerate(summary_report['recommendations'], 1):
                 print(f"   {i}. {recommendation}")
 
         # Next Steps
-        print("\n➡️  NEXT STEPS:")
+        print("\n[NEXT STEPS]:")
         for i, step in enumerate(summary_report['next_steps'], 1):
             print(f"   {i}. {step}")
 
-        print("\n" + "=" * 80)
+        print("\n" + "="*80)
         print("END OF SUMMARY REPORT")
-        print("=" * 80 + "\n")
+        print("="*80 + "\n")
 
 
 def main():
@@ -398,6 +406,8 @@ def main():
     Main execution function for Step 1
     """
     try:
+        print("Initializing NBE Prediction Project - Step 1")
+
         # Initialize orchestrator
         orchestrator = Step1Orchestrator()
 
@@ -407,6 +417,8 @@ def main():
             print(f"❌ Error: Data file not found at {data_file}")
             print("Please place the 'icuc_ml_dataset.xlsx' file in the data/raw/ directory")
             return
+
+        print(f"[SUCCESS] Data file found: {data_file}")
 
         # Run data exploration
         results = orchestrator.run_data_exploration()
@@ -418,7 +430,7 @@ def main():
         with open(results_file, 'w') as f:
             json.dump(results, f, indent=2, default=str)
 
-        print(f"\n📁 Complete results saved to: {results_file}")
+        print(f"\n[SUCCESS] Complete results saved to: {results_file}")
 
         return results
 

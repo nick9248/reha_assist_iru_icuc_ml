@@ -11,7 +11,6 @@ import logging
 from datetime import datetime
 import json
 
-
 class DataValidator:
     """
     Comprehensive data validation for NBE dataset
@@ -287,7 +286,9 @@ class DataValidator:
 
     def _check_range_violations(self, series: pd.Series, min_val: int, max_val: int) -> Dict:
         """Check for values outside valid range"""
-        violations = series[(series < min_val) | (series > max_val)]
+        # Handle missing values explicitly for pandas compatibility
+        valid_mask = series.between(min_val, max_val) | series.isnull()
+        violations = series[~valid_mask]
         return {
             'count': len(violations),
             'percentage': len(violations) / len(series) * 100,
@@ -345,8 +346,7 @@ class DataValidator:
     def _check_duplicates(self, df: pd.DataFrame) -> Dict:
         """Check for duplicate records"""
         total_duplicates = df.duplicated().sum()
-        duplicate_subset = df.duplicated(subset=['accident_number'],
-                                         keep=False).sum() if 'accident_number' in df.columns else 0
+        duplicate_subset = df.duplicated(subset=['accident_number'], keep=False).sum() if 'accident_number' in df.columns else 0
 
         return {
             'total_duplicates': total_duplicates,

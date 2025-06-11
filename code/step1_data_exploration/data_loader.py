@@ -11,7 +11,6 @@ import logging
 from datetime import datetime
 import json
 
-
 class DataLoader:
     """
     Handles loading and initial validation of the NBE dataset
@@ -25,11 +24,11 @@ class DataLoader:
         # Expected schema for validation
         self.expected_columns = {
             'accident_number': 'object',  # Patient identifier
-            'p_score': 'int64',  # Pain score (0-4)
-            'p_status': 'int64',  # Pain status (0-2)
-            'fl_score': 'int64',  # Function limitation score (0-4)
-            'fl_status': 'int64',  # Function limitation status (0-2)
-            'nbe': 'int64'  # Target variable (0, 1, 2)
+            'p_score': 'int64',          # Pain score (0-4)
+            'p_status': 'int64',         # Pain status (0-2)
+            'fl_score': 'int64',         # Function limitation score (0-4)
+            'fl_status': 'int64',        # Function limitation status (0-2)
+            'nbe': 'int64'               # Target variable (0, 1, 2)
         }
 
         # Valid ranges for validation
@@ -144,7 +143,9 @@ class DataLoader:
                 # Check valid ranges for numeric columns
                 if col in self.valid_ranges:
                     min_val, max_val = self.valid_ranges[col]
-                    invalid_values = df[~df[col].between(min_val, max_val, na_action='ignore')][col]
+                    # Handle missing values explicitly for compatibility
+                    valid_mask = df[col].between(min_val, max_val) | df[col].isnull()
+                    invalid_values = df[~valid_mask][col]
 
                     if not invalid_values.empty:
                         validation_results['range_violations'][col] = {
@@ -238,8 +239,7 @@ class DataLoader:
 
         # Log key metrics
         self.logger.info(f"Data shape: {quality_metrics['basic_stats']['shape']}")
-        self.logger.info(
-            f"Unique patients: {quality_metrics.get('patient_analysis', {}).get('unique_patients', 'N/A')}")
+        self.logger.info(f"Unique patients: {quality_metrics.get('patient_analysis', {}).get('unique_patients', 'N/A')}")
         self.logger.info(f"Missing values: {sum([v['count'] for v in missing_stats.values()])} total")
 
         if 'target_analysis' in quality_metrics:
@@ -263,7 +263,7 @@ class DataLoader:
         return min_proportion >= threshold
 
     def save_exploration_results(self, df: pd.DataFrame, validation_results: Dict,
-                                 quality_metrics: Dict) -> Path:
+                               quality_metrics: Dict) -> Path:
         """
         Save exploration results to processed data folder
 

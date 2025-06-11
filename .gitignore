@@ -2,11 +2,9 @@
 /data/raw/icuc_ml_dataset.xlsx
 
 # Processed Files
+/data/processed
 
 
-# The test codes
-/code/test/test_1.py
-/code/test/test_2.py
 
 # The environment variables
 /.env
