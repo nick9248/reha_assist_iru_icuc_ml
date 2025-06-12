@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-06-11T14:08:08.892357",
+  "timestamp": "2025-06-12T10:32:11.308956",
   "step": "step1_data_exploration",
   "status": "completed",
   "data_loading": {
@@ -173,7 +173,7 @@
     }
   },
   "validation_report": {
-    "timestamp": "2025-06-11T14:08:09.241399",
+    "timestamp": "2025-06-12T10:32:11.981069",
     "dataset_info": {
       "shape": [
         7463,
@@ -349,13 +349,13 @@
     }
   },
   "visualizations": {
-    "distribution": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\plots\\step1_data_exploration\\data_distribution_20250611_140809.png",
-    "correlation": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\plots\\step1_data_exploration\\correlation_matrix_20250611_140810.png",
-    "missing_values": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\plots\\step1_data_exploration\\missing_values_heatmap_20250611_140810.png",
-    "target_analysis": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\plots\\step1_data_exploration\\target_variable_distribution_20250611_140811.png",
-    "patient_analysis": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\plots\\step1_data_exploration\\patient_consultation_analysis_20250611_140811.png"
+    "distribution": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\plots\\step1_data_exploration\\data_distribution_20250612_103212.png",
+    "correlation": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\plots\\step1_data_exploration\\correlation_matrix_20250612_103212.png",
+    "missing_values": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\plots\\step1_data_exploration\\missing_values_heatmap_20250612_103212.png",
+    "target_analysis": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\plots\\step1_data_exploration\\target_variable_distribution_20250612_103212.png",
+    "patient_analysis": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\plots\\step1_data_exploration\\patient_consultation_analysis_20250612_103213.png"
   },
-  "output_file": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\data\\processed\\step1_data_exploration_20250611_140812.csv",
+  "output_file": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\data\\processed\\step1_data_exploration_20250612_103213.csv",
   "summary_report": {
     "dataset_overview": {
       "total_rows": 7463,
