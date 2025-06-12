@@ -67,7 +67,7 @@ class ModelEvaluator:
         return logger
 
     def evaluate_single_model(self, model: Any, X_test: pd.DataFrame, y_test: pd.Series,
-                              model_name: str, model_type: str) -> Dict[str, Any]:
+                             model_name: str, model_type: str) -> Dict[str, Any]:
         """
         Evaluate a single model on test data
 
@@ -160,13 +160,12 @@ class ModelEvaluator:
             }
         }
 
-        self.logger.info(
-            f"{model_name} ({model_type}) - AUC: {auc_roc:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")
+        self.logger.info(f"{model_name} ({model_type}) - AUC: {auc_roc:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")
 
         return results
 
     def evaluate_all_models(self, baseline_models: Dict[str, Any], enhanced_models: Dict[str, Any],
-                            test_datasets: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
+                           test_datasets: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
         """
         Evaluate all trained models on test data
 
@@ -179,6 +178,8 @@ class ModelEvaluator:
             Dict containing all evaluation results
         """
         self.logger.info("Starting comprehensive model evaluation")
+        self.logger.info(f"Baseline models to evaluate: {len(baseline_models)}")
+        self.logger.info(f"Enhanced models to evaluate: {len(enhanced_models)}")
 
         all_results = {
             'baseline': {},
@@ -190,29 +191,40 @@ class ModelEvaluator:
         X_baseline_test, y_baseline_test = self._prepare_features_target(test_datasets['baseline_test'])
         X_enhanced_test, y_enhanced_test = self._prepare_features_target(test_datasets['enhanced_test'])
 
+        self.logger.info(f"Baseline test data shape: {X_baseline_test.shape}")
+        self.logger.info(f"Enhanced test data shape: {X_enhanced_test.shape}")
+
         # Evaluate baseline models
         for model_key, model_data in baseline_models.items():
             try:
+                self.logger.info(f"Evaluating baseline {model_key}...")
                 results = self.evaluate_single_model(
                     model_data['model'], X_baseline_test, y_baseline_test,
                     model_data['model_name'], 'baseline'
                 )
                 all_results['baseline'][model_key] = results
+                self.logger.info(f"✅ Baseline {model_key} evaluation completed")
             except Exception as e:
-                self.logger.error(f"Error evaluating baseline {model_key}: {str(e)}")
+                self.logger.error(f"❌ Error evaluating baseline {model_key}: {str(e)}")
+                import traceback
+                self.logger.error(traceback.format_exc())
 
         # Evaluate enhanced models
         for model_key, model_data in enhanced_models.items():
             try:
+                self.logger.info(f"Evaluating enhanced {model_key}...")
                 results = self.evaluate_single_model(
                     model_data['model'], X_enhanced_test, y_enhanced_test,
                     model_data['model_name'], 'enhanced'
                 )
                 all_results['enhanced'][model_key] = results
+                self.logger.info(f"✅ Enhanced {model_key} evaluation completed")
             except Exception as e:
-                self.logger.error(f"Error evaluating enhanced {model_key}: {str(e)}")
+                self.logger.error(f"❌ Error evaluating enhanced {model_key}: {str(e)}")
+                import traceback
+                self.logger.error(traceback.format_exc())
 
-        self.logger.info("Model evaluation completed")
+        self.logger.info(f"Model evaluation completed: {len(all_results['baseline'])} baseline + {len(all_results['enhanced'])} enhanced")
         return all_results
 
     def _prepare_features_target(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
@@ -291,11 +303,9 @@ class ModelEvaluator:
             baseline_auc = comparison['best_models']['baseline']['auc_roc']
 
             if enhanced_auc > baseline_auc + 0.02:  # Significant improvement threshold
-                comparison['recommendations'].append(
-                    "Use enhanced model for production - significant improvement detected")
+                comparison['recommendations'].append("Use enhanced model for production - significant improvement detected")
             elif enhanced_auc > baseline_auc:
-                comparison['recommendations'].append(
-                    "Enhanced model shows improvement but consider complexity trade-off")
+                comparison['recommendations'].append("Enhanced model shows improvement but consider complexity trade-off")
             else:
                 comparison['recommendations'].append("Baseline model sufficient - enhanced features may not add value")
 
@@ -368,11 +378,11 @@ class ModelEvaluator:
         for model_type in ['baseline', 'enhanced']:
             type_data = plot_data[plot_data['Type'] == model_type]
             ax2.scatter(type_data['Recall'], type_data['Precision'],
-                        label=model_type, s=100, alpha=0.7)
+                       label=model_type, s=100, alpha=0.7)
             # Add model labels
             for idx, row in type_data.iterrows():
                 ax2.annotate(row['Model'], (row['Recall'], row['Precision']),
-                             xytext=(5, 5), textcoords='offset points', fontsize=8)
+                           xytext=(5, 5), textcoords='offset points', fontsize=8)
 
         ax2.set_xlabel('Recall')
         ax2.set_ylabel('Precision')
@@ -390,30 +400,38 @@ class ModelEvaluator:
         # Plot 4: Overall Performance Radar (for best models)
         ax4 = axes[1, 1]
 
-        # Find best baseline and enhanced models
-        best_baseline = plot_data[plot_data['Type'] == 'baseline'].loc[
-            plot_data[plot_data['Type'] == 'baseline']['AUC'].idxmax()]
-        best_enhanced = plot_data[plot_data['Type'] == 'enhanced'].loc[
-            plot_data[plot_data['Type'] == 'enhanced']['AUC'].idxmax()]
+        # Find best baseline and enhanced models (with safety check)
+        baseline_data = plot_data[plot_data['Type'] == 'baseline']
+        enhanced_data = plot_data[plot_data['Type'] == 'enhanced']
 
-        metrics = ['AUC', 'Precision', 'Recall', 'F1']
-        baseline_values = [best_baseline[metric] for metric in metrics]
-        enhanced_values = [best_enhanced[metric] for metric in metrics]
+        if len(baseline_data) > 0 and len(enhanced_data) > 0:
+            best_baseline = baseline_data.loc[baseline_data['AUC'].idxmax()]
+            best_enhanced = enhanced_data.loc[enhanced_data['AUC'].idxmax()]
 
-        x = np.arange(len(metrics))
-        width = 0.35
+            metrics = ['AUC', 'Precision', 'Recall', 'F1']
+            baseline_values = [best_baseline[metric] for metric in metrics]
+            enhanced_values = [best_enhanced[metric] for metric in metrics]
 
-        ax4.bar(x - width / 2, baseline_values, width, label=f'Best Baseline ({best_baseline["Model"]})', alpha=0.7)
-        ax4.bar(x + width / 2, enhanced_values, width, label=f'Best Enhanced ({best_enhanced["Model"]})', alpha=0.7)
+            x = np.arange(len(metrics))
+            width = 0.35
 
-        ax4.set_xlabel('Metrics')
-        ax4.set_ylabel('Score')
-        ax4.set_title('Best Model Comparison', fontweight='bold')
-        ax4.set_xticks(x)
-        ax4.set_xticklabels(metrics)
-        ax4.legend()
-        ax4.grid(True, alpha=0.3)
-        ax4.set_ylim(0, 1)
+            ax4.bar(x - width/2, baseline_values, width, label=f'Best Baseline ({best_baseline["Model"]})', alpha=0.7)
+            ax4.bar(x + width/2, enhanced_values, width, label=f'Best Enhanced ({best_enhanced["Model"]})', alpha=0.7)
+
+            ax4.set_xlabel('Metrics')
+            ax4.set_ylabel('Score')
+            ax4.set_title('Best Model Comparison', fontweight='bold')
+            ax4.set_xticks(x)
+            ax4.set_xticklabels(metrics)
+            ax4.legend()
+            ax4.grid(True, alpha=0.3)
+            ax4.set_ylim(0, 1)
+        else:
+            # Handle case where we don't have both types
+            ax4.text(0.5, 0.5, 'Insufficient data for comparison',
+                    ha='center', va='center', transform=ax4.transAxes,
+                    fontsize=12, bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.8))
+            ax4.set_title('Best Model Comparison', fontweight='bold')
 
         plt.tight_layout()
 
@@ -451,7 +469,7 @@ class ModelEvaluator:
             auc = results['metrics']['auc_roc']
 
             ax1.plot(fpr, tpr, color=colors[i % len(colors)],
-                     label=f"{results['model_name']} (AUC = {auc:.3f})", linewidth=2)
+                    label=f"{results['model_name']} (AUC = {auc:.3f})", linewidth=2)
 
         ax1.plot([0, 1], [0, 1], 'k--', alpha=0.5, label='Random (AUC = 0.500)')
         ax1.set_xlabel('False Positive Rate')
@@ -467,7 +485,7 @@ class ModelEvaluator:
             auc = results['metrics']['auc_roc']
 
             ax2.plot(fpr, tpr, color=colors[i % len(colors)],
-                     label=f"{results['model_name']} (AUC = {auc:.3f})", linewidth=2)
+                    label=f"{results['model_name']} (AUC = {auc:.3f})", linewidth=2)
 
         ax2.plot([0, 1], [0, 1], 'k--', alpha=0.5, label='Random (AUC = 0.500)')
         ax2.set_xlabel('False Positive Rate')
@@ -522,8 +540,8 @@ class ModelEvaluator:
             cm = np.array(results['confusion_matrix']['matrix'])
 
             sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax,
-                        xticklabels=['NBE No', 'NBE Yes'],
-                        yticklabels=['NBE No', 'NBE Yes'])
+                       xticklabels=['NBE No', 'NBE Yes'],
+                       yticklabels=['NBE No', 'NBE Yes'])
 
             ax.set_title(f"{results['model_name']} (Baseline)\nAUC: {results['metrics']['auc_roc']:.3f}")
             ax.set_xlabel('Predicted')
@@ -537,8 +555,8 @@ class ModelEvaluator:
             cm = np.array(results['confusion_matrix']['matrix'])
 
             sns.heatmap(cm, annot=True, fmt='d', cmap='Greens', ax=ax,
-                        xticklabels=['NBE No', 'NBE Yes'],
-                        yticklabels=['NBE No', 'NBE Yes'])
+                       xticklabels=['NBE No', 'NBE Yes'],
+                       yticklabels=['NBE No', 'NBE Yes'])
 
             ax.set_title(f"{results['model_name']} (Enhanced)\nAUC: {results['metrics']['auc_roc']:.3f}")
             ax.set_xlabel('Predicted')
@@ -562,7 +580,7 @@ class ModelEvaluator:
         return str(plot_path)
 
     def create_feature_importance_plot(self, baseline_models: Dict[str, Any],
-                                       enhanced_models: Dict[str, Any]) -> str:
+                                      enhanced_models: Dict[str, Any]) -> str:
         """
         Create feature importance comparison plots
 
@@ -625,7 +643,7 @@ class ModelEvaluator:
             for i, bar in enumerate(bars):
                 width = bar.get_width()
                 ax.text(width + width * 0.01, bar.get_y() + bar.get_height() / 2,
-                        f'{width:.3f}', ha='left', va='center', fontsize=9)
+                       f'{width:.3f}', ha='left', va='center', fontsize=9)
 
             plot_idx += 1
 
@@ -653,7 +671,7 @@ class ModelEvaluator:
             for i, bar in enumerate(bars):
                 width = bar.get_width()
                 ax.text(width + width * 0.01, bar.get_y() + bar.get_height() / 2,
-                        f'{width:.3f}', ha='left', va='center', fontsize=9)
+                       f'{width:.3f}', ha='left', va='center', fontsize=9)
 
             plot_idx += 1
 
@@ -673,8 +691,8 @@ class ModelEvaluator:
         return str(plot_path)
 
     def save_evaluation_results(self, evaluation_results: Dict[str, Any],
-                                comparison_results: Dict[str, Any],
-                                plot_paths: Dict[str, str]) -> str:
+                               comparison_results: Dict[str, Any],
+                               plot_paths: Dict[str, str]) -> str:
         """
         Save comprehensive evaluation results and metadata
 
@@ -718,8 +736,8 @@ class ModelEvaluator:
         return str(results_file)
 
     def generate_comprehensive_evaluation(self, baseline_models: Dict[str, Any],
-                                          enhanced_models: Dict[str, Any],
-                                          test_datasets: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
+                                        enhanced_models: Dict[str, Any],
+                                        test_datasets: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
         """
         Generate complete evaluation report with all analyses and visualizations
 
@@ -768,11 +786,9 @@ class ModelEvaluator:
                 best_enhanced = comparison_results['best_models'].get('enhanced')
 
                 if best_baseline:
-                    self.logger.info(
-                        f"Best baseline model: {best_baseline['model']} (AUC: {best_baseline['auc_roc']:.4f})")
+                    self.logger.info(f"Best baseline model: {best_baseline['model']} (AUC: {best_baseline['auc_roc']:.4f})")
                 if best_enhanced:
-                    self.logger.info(
-                        f"Best enhanced model: {best_enhanced['model']} (AUC: {best_enhanced['auc_roc']:.4f})")
+                    self.logger.info(f"Best enhanced model: {best_enhanced['model']} (AUC: {best_enhanced['auc_roc']:.4f})")
 
             return complete_output
 

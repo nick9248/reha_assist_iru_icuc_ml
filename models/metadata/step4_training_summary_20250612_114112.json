@@ -1,0 +1,56 @@
+{
+  "timestamp": "20250612_114112",
+  "baseline_models": {
+    "logistic_regression": {
+      "cv_mean": 0.6971817577607851,
+      "cv_std": 0.022942459803251918,
+      "feature_count": 4,
+      "training_time": 0.002271
+    },
+    "random_forest": {
+      "cv_mean": 0.7277724803690355,
+      "cv_std": 0.022328799027347017,
+      "feature_count": 4,
+      "training_time": 0.089762
+    },
+    "xgboost": {
+      "cv_mean": 0.7283103318651932,
+      "cv_std": 0.022400456834674266,
+      "feature_count": 4,
+      "training_time": 0.114529
+    }
+  },
+  "enhanced_models": {
+    "logistic_regression": {
+      "cv_mean": 0.7387009391352313,
+      "cv_std": 0.030766940151066346,
+      "feature_count": 10,
+      "training_time": 0.011857
+    },
+    "random_forest": {
+      "cv_mean": 0.8148547222273631,
+      "cv_std": 0.016471616892083325,
+      "feature_count": 10,
+      "training_time": 0.157724
+    },
+    "xgboost": {
+      "cv_mean": 0.8061793809791553,
+      "cv_std": 0.012421356305047348,
+      "feature_count": 10,
+      "training_time": 0.058219
+    }
+  },
+  "available_models": [
+    "logistic_regression",
+    "random_forest",
+    "xgboost"
+  ],
+  "saved_files": {
+    "logistic_regression_baseline": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\models\\artifacts\\step4_logistic_regression_baseline_20250612_114112.pkl",
+    "random_forest_baseline": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\models\\artifacts\\step4_random_forest_baseline_20250612_114112.pkl",
+    "xgboost_baseline": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\models\\artifacts\\step4_xgboost_baseline_20250612_114112.pkl",
+    "logistic_regression_enhanced": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\models\\artifacts\\step4_logistic_regression_enhanced_20250612_114112.pkl",
+    "random_forest_enhanced": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\models\\artifacts\\step4_random_forest_enhanced_20250612_114112.pkl",
+    "xgboost_enhanced": "C:\\Users\\Nick\\PycharmProjects\\reha_assist_iru\\models\\artifacts\\step4_xgboost_enhanced_20250612_114112.pkl"
+  }
+}

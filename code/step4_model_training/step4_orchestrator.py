@@ -16,10 +16,6 @@ sys.path.append(str(project_root))
 from code.step4_model_training.model_trainer import ModelTrainer
 from code.step4_model_training.model_evaluator import ModelEvaluator
 
-# Import configuration utilities
-from utils.logger_utils import setup_project_logger
-from config.model_config import ModelConfig
-
 def load_environment_paths():
     """Load paths from environment or use defaults"""
     try:

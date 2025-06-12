@@ -1,0 +1,52 @@
+{
+  "model_name": "XGBoost",
+  "model_type": "enhanced",
+  "training_time_seconds": 0.058219,
+  "cv_scores": [
+    0.787387739164389,
+    0.814223718668163,
+    0.8240553684998129,
+    0.8005349794238682,
+    0.8046950991395436
+  ],
+  "cv_mean": 0.8061793809791553,
+  "cv_std": 0.012421356305047348,
+  "feature_names": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status",
+    "days_since_accident",
+    "consultation_number",
+    "p_score_fl_score_interaction",
+    "severity_index",
+    "both_improving",
+    "high_severity"
+  ],
+  "actual_features": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status",
+    "days_since_accident",
+    "consultation_number",
+    "p_score_fl_score_interaction",
+    "severity_index",
+    "both_improving",
+    "high_severity"
+  ],
+  "feature_count": 10,
+  "training_samples": 4365,
+  "feature_importance": {
+    "p_score": "0.040063657",
+    "p_status": "0.40792367",
+    "fl_score": "0.05565036",
+    "fl_status": "0.08842509",
+    "days_since_accident": "0.08074544",
+    "consultation_number": "0.04604236",
+    "p_score_fl_score_interaction": "0.08402355",
+    "severity_index": "0.12115965",
+    "both_improving": "0.07596613",
+    "high_severity": "0.0"
+  }
+}

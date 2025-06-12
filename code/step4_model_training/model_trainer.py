@@ -21,7 +21,6 @@ import warnings
 # Handle XGBoost import gracefully
 try:
     from xgboost import XGBClassifier
-
     XGBOOST_AVAILABLE = True
 except ImportError:
     XGBOOST_AVAILABLE = False
@@ -109,7 +108,8 @@ class ModelTrainer:
                     n_estimators=100,
                     max_depth=6,
                     learning_rate=0.1,
-                    eval_metric='logloss'
+                    eval_metric='logloss',
+                    verbosity=0  # Suppress XGBoost output
                 ),
                 'name': 'XGBoost',
                 'type': 'boosting'
@@ -136,7 +136,12 @@ class ModelTrainer:
         enhanced_test_files = list(processed_dir.glob('step2_enhanced_test_*.csv'))
 
         if not all([baseline_train_files, baseline_test_files, enhanced_train_files, enhanced_test_files]):
-            raise FileNotFoundError("Missing required dataset files from Step 2")
+            missing = []
+            if not baseline_train_files: missing.append("baseline_train")
+            if not baseline_test_files: missing.append("baseline_test")
+            if not enhanced_train_files: missing.append("enhanced_train")
+            if not enhanced_test_files: missing.append("enhanced_test")
+            raise FileNotFoundError(f"Missing required dataset files: {missing}")
 
         # Load most recent files
         datasets = {
@@ -146,9 +151,17 @@ class ModelTrainer:
             'enhanced_test': pd.read_csv(max(enhanced_test_files, key=lambda x: x.stat().st_mtime))
         }
 
-        # Log dataset info
+        # Log dataset info and VERIFY the correct data is loaded
         for name, df in datasets.items():
-            self.logger.info(f"{name}: {df.shape[0]} records, {df.shape[1] - 1} features")
+            feature_count = len([col for col in df.columns if col != 'nbe'])
+            self.logger.info(f"{name}: {df.shape[0]} records, {feature_count} features")
+            self.logger.info(f"  Columns: {list(df.columns)}")
+
+            # CRITICAL: Verify baseline datasets have 4 features, enhanced have 10
+            if 'baseline' in name and feature_count != 4:
+                raise ValueError(f"Baseline dataset {name} has {feature_count} features, expected 4!")
+            elif 'enhanced' in name and feature_count != 10:
+                raise ValueError(f"Enhanced dataset {name} has {feature_count} features, expected 10!")
 
         return datasets
 
@@ -171,7 +184,7 @@ class ModelTrainer:
         return X, y
 
     def train_single_model(self, model_config: Dict, X_train: pd.DataFrame,
-                           y_train: pd.Series, model_type: str) -> Dict[str, Any]:
+                          y_train: pd.Series, model_type: str) -> Dict[str, Any]:
         """
         Train a single model and return training results
 
@@ -187,13 +200,29 @@ class ModelTrainer:
         model_name = model_config['name']
         self.logger.info(f"Training {model_name} ({model_type} features)")
 
-        # Get model instance
-        model = model_config['model']
+        # CRITICAL: Create a fresh model instance to avoid contamination
+        model_class = type(model_config['model'])
+        model_params = model_config['model'].get_params()
+        model = model_class(**model_params)
+
+        self.logger.info(f"TRAINING {model_name} with input shape: {X_train.shape}")
+        self.logger.info(f"TRAINING {model_name} with features: {list(X_train.columns)}")
 
         # Train model
         start_time = datetime.now()
         model.fit(X_train, y_train)
         training_time = (datetime.now() - start_time).total_seconds()
+
+        # CRITICAL: Verify what the model actually learned
+        if hasattr(model, 'feature_names_in_'):
+            actual_features = list(model.feature_names_in_)
+            self.logger.info(f"TRAINED {model_name} actually has features: {actual_features}")
+            self.logger.info(f"TRAINED {model_name} feature count: {len(actual_features)}")
+
+            # Validate the model was trained correctly
+            expected_count = 4 if model_type == 'baseline' else 10
+            if len(actual_features) != expected_count:
+                raise ValueError(f"CRITICAL: {model_name} ({model_type}) trained with {len(actual_features)} features, expected {expected_count}!")
 
         # Cross-validation score
         cv_scores = cross_val_score(
@@ -204,14 +233,15 @@ class ModelTrainer:
 
         # Create result dictionary
         result = {
-            'model': model,
+            'model': model,  # Make sure we return the correct model
             'model_name': model_name,
             'model_type': model_type,
             'training_time_seconds': training_time,
             'cv_scores': cv_scores.tolist(),
             'cv_mean': cv_scores.mean(),
             'cv_std': cv_scores.std(),
-            'feature_names': list(X_train.columns),
+            'feature_names': list(X_train.columns),  # What we intended to train with
+            'actual_features': actual_features if hasattr(model, 'feature_names_in_') else list(X_train.columns),  # What model actually has
             'feature_count': len(X_train.columns),
             'training_samples': len(X_train)
         }
@@ -240,17 +270,24 @@ class ModelTrainer:
             Dict containing all trained baseline models
         """
         self.logger.info("Starting baseline model training")
+        self.logger.info(f"Training data shape: {X_train.shape}")
+        self.logger.info(f"Features: {list(X_train.columns)}")
+        self.logger.info(f"Target distribution: {y_train.value_counts().to_dict()}")
 
         baseline_results = {}
 
         for model_key, model_config in self.model_configs.items():
             try:
+                self.logger.info(f"Training baseline {model_config['name']}...")
                 result = self.train_single_model(model_config, X_train, y_train, 'baseline')
                 baseline_results[model_key] = result
+                self.logger.info(f"✅ Baseline {model_config['name']} completed")
             except Exception as e:
-                self.logger.error(f"Error training baseline {model_config['name']}: {str(e)}")
+                self.logger.error(f"❌ Error training baseline {model_config['name']}: {str(e)}")
+                import traceback
+                self.logger.error(traceback.format_exc())
 
-        self.logger.info(f"Baseline training completed for {len(baseline_results)} models")
+        self.logger.info(f"Baseline training completed for {len(baseline_results)} out of {len(self.model_configs)} models")
         return baseline_results
 
     def train_enhanced_models(self, X_train: pd.DataFrame, y_train: pd.Series) -> Dict[str, Any]:
@@ -265,21 +302,28 @@ class ModelTrainer:
             Dict containing all trained enhanced models
         """
         self.logger.info("Starting enhanced model training")
+        self.logger.info(f"Training data shape: {X_train.shape}")
+        self.logger.info(f"Features: {list(X_train.columns)}")
+        self.logger.info(f"Target distribution: {y_train.value_counts().to_dict()}")
 
         enhanced_results = {}
 
         for model_key, model_config in self.model_configs.items():
             try:
+                self.logger.info(f"Training enhanced {model_config['name']}...")
                 result = self.train_single_model(model_config, X_train, y_train, 'enhanced')
                 enhanced_results[model_key] = result
+                self.logger.info(f"✅ Enhanced {model_config['name']} completed")
             except Exception as e:
-                self.logger.error(f"Error training enhanced {model_config['name']}: {str(e)}")
+                self.logger.error(f"❌ Error training enhanced {model_config['name']}: {str(e)}")
+                import traceback
+                self.logger.error(traceback.format_exc())
 
-        self.logger.info(f"Enhanced training completed for {len(enhanced_results)} models")
+        self.logger.info(f"Enhanced training completed for {len(enhanced_results)} out of {len(self.model_configs)} models")
         return enhanced_results
 
     def save_trained_models(self, baseline_results: Dict[str, Any],
-                            enhanced_results: Dict[str, Any]) -> Dict[str, str]:
+                           enhanced_results: Dict[str, Any]) -> Dict[str, str]:
         """
         Save all trained models and metadata
 
@@ -373,17 +417,56 @@ class ModelTrainer:
             # Load datasets
             datasets = self.load_training_data(data_path)
 
+            # CRITICAL DEBUG: Log what we actually loaded
+            for name, df in datasets.items():
+                feature_cols = [col for col in df.columns if col != 'nbe']
+                self.logger.info(f"LOADED {name}: {df.shape} with {len(feature_cols)} features: {feature_cols}")
+
             # Prepare baseline features and target
             X_baseline_train, y_baseline_train = self.prepare_features_target(datasets['baseline_train'])
+            self.logger.info(f"PREPARED baseline training data: {X_baseline_train.shape}")
+            self.logger.info(f"PREPARED baseline features: {list(X_baseline_train.columns)}")
 
             # Prepare enhanced features and target
             X_enhanced_train, y_enhanced_train = self.prepare_features_target(datasets['enhanced_train'])
+            self.logger.info(f"PREPARED enhanced training data: {X_enhanced_train.shape}")
+            self.logger.info(f"PREPARED enhanced features: {list(X_enhanced_train.columns)}")
 
-            # Train baseline models
+            # CRITICAL: Verify the data before training
+            if len(X_baseline_train.columns) != 4:
+                raise ValueError(f"CRITICAL ERROR: Baseline training data has {len(X_baseline_train.columns)} features, expected 4!")
+            if len(X_enhanced_train.columns) != 10:
+                raise ValueError(f"CRITICAL ERROR: Enhanced training data has {len(X_enhanced_train.columns)} features, expected 10!")
+
+            # Train baseline models on baseline data
+            self.logger.info("="*50)
+            self.logger.info("TRAINING BASELINE MODELS ON BASELINE DATA")
+            self.logger.info(f"PASSING TO BASELINE TRAINING: {X_baseline_train.shape} with features {list(X_baseline_train.columns)}")
+            self.logger.info("="*50)
             baseline_results = self.train_baseline_models(X_baseline_train, y_baseline_train)
 
-            # Train enhanced models
+            # Verify baseline models were trained correctly
+            for model_key, result in baseline_results.items():
+                if 'feature_names' in result:
+                    actual_features = result['feature_names']
+                    self.logger.info(f"BASELINE {model_key} was trained with features: {actual_features}")
+                    if len(actual_features) != 4:
+                        self.logger.error(f"CRITICAL: Baseline {model_key} has {len(actual_features)} features, expected 4!")
+
+            # Train enhanced models on enhanced data
+            self.logger.info("="*50)
+            self.logger.info("TRAINING ENHANCED MODELS ON ENHANCED DATA")
+            self.logger.info(f"PASSING TO ENHANCED TRAINING: {X_enhanced_train.shape} with features {list(X_enhanced_train.columns)}")
+            self.logger.info("="*50)
             enhanced_results = self.train_enhanced_models(X_enhanced_train, y_enhanced_train)
+
+            # Verify enhanced models were trained correctly
+            for model_key, result in enhanced_results.items():
+                if 'feature_names' in result:
+                    actual_features = result['feature_names']
+                    self.logger.info(f"ENHANCED {model_key} was trained with features: {actual_features}")
+                    if len(actual_features) != 10:
+                        self.logger.error(f"CRITICAL: Enhanced {model_key} has {len(actual_features)} features, expected 10!")
 
             # Save all models
             saved_files = self.save_trained_models(baseline_results, enhanced_results)

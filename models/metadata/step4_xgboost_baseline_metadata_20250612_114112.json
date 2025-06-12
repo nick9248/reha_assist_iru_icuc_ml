@@ -1,0 +1,34 @@
+{
+  "model_name": "XGBoost",
+  "model_type": "baseline",
+  "training_time_seconds": 0.114529,
+  "cv_scores": [
+    0.6964001441744511,
+    0.7343509165731389,
+    0.7653423120089787,
+    0.725929667040778,
+    0.7195286195286194
+  ],
+  "cv_mean": 0.7283103318651932,
+  "cv_std": 0.022400456834674266,
+  "feature_names": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status"
+  ],
+  "actual_features": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status"
+  ],
+  "feature_count": 4,
+  "training_samples": 4365,
+  "feature_importance": {
+    "p_score": "0.15433754",
+    "p_status": "0.584848",
+    "fl_score": "0.11019423",
+    "fl_status": "0.15062028"
+  }
+}
