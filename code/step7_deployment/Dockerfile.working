@@ -1,38 +1,69 @@
-FROM python:3.11-slim
+# Save the clean docker-compose configuration
+cat > docker-compose.yml << 'EOF'
+version: '3.8'
 
-# Create non-root user
-RUN groupadd -r apiuser && useradd -r -g apiuser -d /app -s /bin/bash apiuser
+services:
+  # NBE Prediction API Service - Python 3.13
+  nbe-api:
+    build:
+      context: .
+      dockerfile: code/step7_deployment/Dockerfile.python313
+      args:
+        - PYTHON_VERSION=3.13
+    image: nbe-prediction-api:python313
+    container_name: nbe-prediction-api-313
+    restart: unless-stopped
+    
+    # Environment configuration
+    environment:
+      - ENVIRONMENT=production
+      - REQUIRE_AUTH=true
+      - ENABLE_RATE_LIMITING=true
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=http://enaio-server,https://enaio-server,http://localhost:3000
+      - PROJECT_ROOT=/app
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    
+    # Volume mounts
+    volumes:
+      - ./logs:/app/logs
+      - ./models:/app/models:ro
+      - api-data:/app/data
+    
+    # Port mapping
+    ports:
+      - "8000:8000"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+          cpus: '1.0'
+    
+    # Network
+    networks:
+      - nbe-network
 
-# Set working directory
-WORKDIR /app
+# Named volumes
+volumes:
+  api-data:
+    driver: local
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install packages globally
-COPY code/step7_deployment/requirements.production.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Create necessary directories and set permissions
-RUN mkdir -p /app/logs /app/data /app/models /app/plots \
-    && chown -R apiuser:apiuser /app
-
-# Copy production configuration
-COPY code/step7_deployment/.env.production /app/.env
-
-# Set environment
-ENV PYTHONPATH=/app
-
-# Switch to non-root user
-USER apiuser
-
-# Expose port
-EXPOSE 8000
-
-# Start with uvicorn (simpler than gunicorn)
-CMD ["uvicorn", "code.step6_api_development.api_main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Networks
+networks:
+  nbe-network:
+    driver: bridge
+EOF
