@@ -1,0 +1,38 @@
+FROM python:3.11-slim
+
+# Create non-root user
+RUN groupadd -r apiuser && useradd -r -g apiuser -d /app -s /bin/bash apiuser
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install packages globally
+COPY code/step7_deployment/requirements.production.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create necessary directories and set permissions
+RUN mkdir -p /app/logs /app/data /app/models /app/plots \
+    && chown -R apiuser:apiuser /app
+
+# Copy production configuration
+COPY code/step7_deployment/.env.production /app/.env
+
+# Set environment
+ENV PYTHONPATH=/app
+
+# Switch to non-root user
+USER apiuser
+
+# Expose port
+EXPOSE 8000
+
+# Start with uvicorn (simpler than gunicorn)
+CMD ["uvicorn", "code.step6_api_development.api_main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

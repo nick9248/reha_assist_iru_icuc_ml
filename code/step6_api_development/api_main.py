@@ -1,6 +1,6 @@
 """
-Main FastAPI Application for NBE Prediction API
-Provides dual endpoints for baseline and enhanced NBE predictions
+Production-Ready FastAPI Application for NBE Prediction API
+Windows-compatible version without fcntl dependencies
 """
 
 import sys
@@ -9,8 +9,9 @@ import logging
 from datetime import datetime
 import uuid
 from typing import Union
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -29,30 +30,44 @@ from code.step6_api_development.api_schemas import (
 from code.step6_api_development.model_service import ModelService
 from code.step6_api_development.api_validator import APIValidator
 
+# Try to import production security features
+try:
+    from code.step6_api_development.production_auth import (
+        verify_api_key, verify_prediction_permission,
+        SecurityHeadersMiddleware, log_requests,
+        limiter, production_config, RATE_LIMITING_AVAILABLE
+    )
+    PRODUCTION_FEATURES_AVAILABLE = True
+except ImportError as e:
+    # Fallback for development
+    PRODUCTION_FEATURES_AVAILABLE = False
+    RATE_LIMITING_AVAILABLE = False
+    limiter = None
+
+    # Create mock production_config for development
+    class MockProductionConfig:
+        def __init__(self):
+            self.require_auth = False
+            self.enable_rate_limiting = False
+            self.log_level = "INFO"
+            self.cors_origins = ["*"]
+
+        def is_production(self):
+            return False
+
+        def get_server_config(self):
+            return {"host": "0.0.0.0", "port": 8000, "workers": 1, "timeout": 30, "keepalive": 2}
+
+    production_config = MockProductionConfig()
+    print(f"Production features not available: {e}")
+
 # Configure logging
+log_level = getattr(logging, getattr(production_config, 'log_level', 'INFO'))
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="NBE Prediction API",
-    description="API for predicting Normal Business Expectation (NBE) compliance in medical consultations",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Configure based on your needs
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Global variables for services
 model_service: ModelService = None
@@ -64,8 +79,17 @@ def load_environment_paths():
     try:
         from dotenv import load_dotenv
         import os
-        load_dotenv()
-        project_root = Path(os.getenv('PROJECT_ROOT', Path(__file__).parent.parent.parent))
+
+        # Load from project root
+        project_root = Path(__file__).parent.parent.parent
+        env_file = project_root / '.env'
+
+        if env_file.exists():
+            load_dotenv(env_file)
+        else:
+            load_dotenv()
+
+        project_root = Path(os.getenv('PROJECT_ROOT', project_root))
     except ImportError:
         project_root = Path(__file__).parent.parent.parent
 
@@ -75,12 +99,14 @@ def load_environment_paths():
     }
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize services on startup"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Modern FastAPI lifespan event handler"""
+    # Startup
     global model_service, validator
 
-    logger.info("🚀 Starting NBE Prediction API...")
+    env_mode = "production" if (PRODUCTION_FEATURES_AVAILABLE and production_config.is_production()) else "development"
+    logger.info(f"🚀 Starting NBE Prediction API in {env_mode} mode...")
 
     try:
         # Load paths
@@ -99,11 +125,79 @@ async def startup_event():
         # Initialize validator
         validator = APIValidator()
 
+        # Log security status
+        if PRODUCTION_FEATURES_AVAILABLE:
+            auth_status = "enabled" if production_config.require_auth else "disabled"
+            rate_limit_status = "enabled" if production_config.enable_rate_limiting else "disabled"
+            logger.info(f"🔐 Authentication: {auth_status}")
+            logger.info(f"⚡ Rate limiting: {rate_limit_status}")
+        else:
+            logger.info(f"🔐 Authentication: disabled (development mode)")
+            logger.info(f"⚡ Rate limiting: disabled (development mode)")
+
         logger.info("✅ API services initialized successfully")
+
+        yield  # Application is running
 
     except Exception as e:
         logger.error(f"❌ Startup failed: {str(e)}")
         raise
+
+    # Shutdown
+    logger.info("🔄 Shutting down NBE Prediction API...")
+
+
+# Initialize FastAPI app with lifespan
+app_config = {
+    "title": "NBE Prediction API",
+    "description": "Production-ready API for predicting Normal Business Expectation (NBE) compliance in medical consultations",
+    "version": "1.0.0",
+    "docs_url": "/docs",
+    "redoc_url": "/redoc",
+    "lifespan": lifespan
+}
+
+# Add OpenAPI customization for production
+if PRODUCTION_FEATURES_AVAILABLE and production_config.is_production():
+    app_config.update({
+        "docs_url": None,  # Disable docs in production
+        "redoc_url": None,  # Disable redoc in production
+        "openapi_url": None  # Disable OpenAPI schema in production
+    })
+
+app = FastAPI(**app_config)
+
+# Add production middleware if available
+if PRODUCTION_FEATURES_AVAILABLE:
+    # Security headers middleware
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # Rate limiting middleware
+    if production_config.enable_rate_limiting and RATE_LIMITING_AVAILABLE and limiter:
+        from slowapi import _rate_limit_exceeded_handler
+        from slowapi.errors import RateLimitExceeded
+        from slowapi.middleware import SlowAPIMiddleware
+
+        app.state.limiter = limiter
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+        app.add_middleware(SlowAPIMiddleware)
+
+    # Request logging middleware
+    app.middleware("http")(log_requests)
+
+    # CORS with production settings
+    cors_origins = production_config.cors_origins
+else:
+    cors_origins = ["*"]  # Development mode
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(Exception)
@@ -126,22 +220,28 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/", response_model=dict)
 async def root():
     """Root endpoint with API information"""
+    endpoints = {
+        "baseline_prediction": "/api/v1/nbe/predict/baseline",
+        "enhanced_prediction": "/api/v1/nbe/predict/enhanced",
+        "health_check": "/api/v1/health",
+        "model_info": "/api/v1/models/info"
+    }
+
+    # Add docs only in development
+    if not (PRODUCTION_FEATURES_AVAILABLE and production_config.is_production()):
+        endpoints["docs"] = "/docs"
+
     return {
         "message": "NBE Prediction API",
         "version": "1.0.0",
-        "endpoints": {
-            "baseline_prediction": "/api/v1/nbe/predict/baseline",
-            "enhanced_prediction": "/api/v1/nbe/predict/enhanced",
-            "health_check": "/api/v1/health",
-            "model_info": "/api/v1/models/info",
-            "docs": "/docs"
-        },
+        "environment": "production" if (PRODUCTION_FEATURES_AVAILABLE and production_config.is_production()) else "development",
+        "endpoints": endpoints,
         "timestamp": datetime.now().isoformat()
     }
 
 
 @app.get("/api/v1/health", response_model=HealthCheckResponse)
-async def health_check():
+async def health_check(request: Request):
     """Health check endpoint"""
     try:
         if model_service is None:
@@ -169,7 +269,10 @@ async def health_check():
 
 
 @app.get("/api/v1/models/info", response_model=ModelInfoResponse)
-async def get_model_info():
+async def get_model_info(
+    request: Request,
+    key_info: dict = Depends(verify_api_key) if PRODUCTION_FEATURES_AVAILABLE else None
+):
     """Get information about loaded models"""
     try:
         if model_service is None:
@@ -190,7 +293,11 @@ async def get_model_info():
 
 @app.post("/api/v1/nbe/predict/baseline",
           response_model=Union[MinimalPredictionResponse, DetailedPredictionResponse])
-async def predict_baseline(request: BaselinePredictionRequest):
+async def predict_baseline(
+    request_data: BaselinePredictionRequest,
+    request: Request,
+    key_info: dict = Depends(verify_prediction_permission) if PRODUCTION_FEATURES_AVAILABLE else None
+):
     """
     Baseline NBE prediction using 4 core features
     """
@@ -199,11 +306,11 @@ async def predict_baseline(request: BaselinePredictionRequest):
 
     try:
         # Convert request to dict
-        request_data = request.dict()
-        response_type = request_data.pop('response_type', ResponseType.minimal)
+        request_dict = request_data.model_dump()
+        response_type = request_dict.pop('response_type', ResponseType.minimal)
 
         # Validate request
-        validation_result = validator.validate_request(request_data, 'baseline')
+        validation_result = validator.validate_request(request_dict, 'baseline')
 
         if not validation_result['is_valid']:
             logger.warning(f"Request {request_id}: Validation failed - {validation_result['errors']}")
@@ -222,7 +329,7 @@ async def predict_baseline(request: BaselinePredictionRequest):
             logger.warning(f"Request {request_id}: Validation warnings - {validation_result['warnings']}")
 
         # Make prediction
-        prediction_result = model_service.predict_baseline(request_data)
+        prediction_result = model_service.predict_baseline(request_dict)
 
         # Format response based on type
         if response_type == ResponseType.detailed:
@@ -254,7 +361,11 @@ async def predict_baseline(request: BaselinePredictionRequest):
 
 @app.post("/api/v1/nbe/predict/enhanced",
           response_model=Union[MinimalPredictionResponse, DetailedPredictionResponse])
-async def predict_enhanced(request: EnhancedPredictionRequest):
+async def predict_enhanced(
+    request_data: EnhancedPredictionRequest,
+    request: Request,
+    key_info: dict = Depends(verify_prediction_permission) if PRODUCTION_FEATURES_AVAILABLE else None
+):
     """
     Enhanced NBE prediction using 10 features including temporal context
     """
@@ -263,11 +374,11 @@ async def predict_enhanced(request: EnhancedPredictionRequest):
 
     try:
         # Convert request to dict
-        request_data = request.dict()
-        response_type = request_data.pop('response_type', ResponseType.minimal)
+        request_dict = request_data.model_dump()
+        response_type = request_dict.pop('response_type', ResponseType.minimal)
 
         # Validate request
-        validation_result = validator.validate_request(request_data, 'enhanced')
+        validation_result = validator.validate_request(request_dict, 'enhanced')
 
         if not validation_result['is_valid']:
             logger.warning(f"Request {request_id}: Validation failed - {validation_result['errors']}")
@@ -286,7 +397,7 @@ async def predict_enhanced(request: EnhancedPredictionRequest):
             logger.warning(f"Request {request_id}: Validation warnings - {validation_result['warnings']}")
 
         # Make prediction
-        prediction_result = model_service.predict_enhanced(request_data)
+        prediction_result = model_service.predict_enhanced(request_dict)
 
         # Format response based on type
         if response_type == ResponseType.detailed:
@@ -317,7 +428,10 @@ async def predict_enhanced(request: EnhancedPredictionRequest):
 
 
 @app.get("/api/v1/validation/rules")
-async def get_validation_rules():
+async def get_validation_rules(
+    request: Request,
+    key_info: dict = Depends(verify_api_key) if PRODUCTION_FEATURES_AVAILABLE else None
+):
     """Get information about validation rules and feature requirements"""
     try:
         if validator is None:

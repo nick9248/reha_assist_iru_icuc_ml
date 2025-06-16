@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # NBE Prediction API Service
+  nbe-api:
+    build:
+      context: .
+      dockerfile: code/step7_deployment/Dockerfile.working
+    image: nbe-prediction-api:1.0.0
+    container_name: nbe-prediction-api
+    restart: unless-stopped
+    
+    # Environment configuration
+    environment:
+      - ENVIRONMENT=production
+      - REQUIRE_AUTH=true
+      - ENABLE_RATE_LIMITING=true
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=http://enaio-server,https://enaio-server
+      - PROJECT_ROOT=/app
+    
+    # Volume mounts for persistence
+    volumes:
+      - ./logs:/app/logs
+      - ./models:/app/models:ro  # Read-only model files
+      - api-data:/app/data
+    
+    # Port mapping
+    ports:
+      - "8000:8000"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "code/step7_deployment/health_check.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Network
+    networks:
+      - nbe-network
+
+# Named volumes for data persistence
+volumes:
+  api-data:
+    driver: local
+
+# Custom network
+networks:
+  nbe-network:
+    driver: bridge

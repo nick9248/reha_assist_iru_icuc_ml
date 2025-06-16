@@ -1,9 +1,9 @@
 """
 API Schemas Module for NBE Prediction Project
-Defines Pydantic models for request/response validation
+Updated for Pydantic V2 compatibility
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal
 from datetime import datetime
 from enum import Enum
@@ -25,8 +25,8 @@ class BaselinePredictionRequest(BaseModel):
     fl_status: int = Field(..., ge=0, le=2, description="Function limitation status (0=worse, 1=same, 2=better)")
     response_type: ResponseType = Field(ResponseType.minimal, description="Response detail level")
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "p_score": 2,
                 "p_status": 1,
@@ -35,6 +35,7 @@ class BaselinePredictionRequest(BaseModel):
                 "response_type": "minimal"
             }
         }
+    }
 
 
 class EnhancedPredictionRequest(BaseModel):
@@ -54,16 +55,18 @@ class EnhancedPredictionRequest(BaseModel):
     # Response configuration
     response_type: ResponseType = Field(ResponseType.minimal, description="Response detail level")
 
-    @validator('days_since_accident', pre=True, always=True)
+    @field_validator('days_since_accident', mode='before')
+    @classmethod
     def set_default_days_since_accident(cls, v):
         return 21 if v is None else v
 
-    @validator('consultation_number', pre=True, always=True)
+    @field_validator('consultation_number', mode='before')
+    @classmethod
     def set_default_consultation_number(cls, v):
         return 2 if v is None else v
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "p_score": 2,
                 "p_status": 1,
@@ -74,6 +77,7 @@ class EnhancedPredictionRequest(BaseModel):
                 "response_type": "detailed"
             }
         }
+    }
 
 
 class MinimalPredictionResponse(BaseModel):
@@ -83,13 +87,14 @@ class MinimalPredictionResponse(BaseModel):
     nbe_yes_probability: float = Field(..., ge=0.0, le=1.0, description="Probability of NBE compliance")
     nbe_no_probability: float = Field(..., ge=0.0, le=1.0, description="Probability of NBE non-compliance")
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "nbe_yes_probability": 0.847,
                 "nbe_no_probability": 0.153
             }
         }
+    }
 
 
 class DetailedPredictionResponse(BaseModel):
@@ -105,8 +110,8 @@ class DetailedPredictionResponse(BaseModel):
     feature_engineering_applied: bool = Field(..., description="Whether interaction features were computed")
     input_validation_passed: bool = Field(True, description="Whether input validation succeeded")
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "nbe_yes_probability": 0.847,
                 "nbe_no_probability": 0.153,
@@ -118,6 +123,7 @@ class DetailedPredictionResponse(BaseModel):
                 "input_validation_passed": True
             }
         }
+    }
 
 
 class HealthCheckResponse(BaseModel):
@@ -129,8 +135,8 @@ class HealthCheckResponse(BaseModel):
     models_loaded: dict = Field(..., description="Status of loaded models")
     api_version: str = Field(..., description="API version")
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "status": "healthy",
                 "timestamp": "2025-06-12T15:30:45.123456",
@@ -141,6 +147,7 @@ class HealthCheckResponse(BaseModel):
                 "api_version": "1.0.0"
             }
         }
+    }
 
 
 class ModelInfoResponse(BaseModel):
@@ -152,8 +159,8 @@ class ModelInfoResponse(BaseModel):
     training_timestamp: str = Field(..., description="When models were trained")
     feature_sets: dict = Field(..., description="Feature sets for each model type")
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "baseline_model": {
                     "algorithm": "LogisticRegression",
@@ -174,6 +181,7 @@ class ModelInfoResponse(BaseModel):
                 }
             }
         }
+    }
 
 
 class ErrorResponse(BaseModel):
@@ -185,8 +193,8 @@ class ErrorResponse(BaseModel):
     timestamp: datetime = Field(..., description="Error timestamp")
     request_id: Optional[str] = Field(None, description="Request ID for tracking")
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "error": "ValidationError",
                 "message": "p_score must be between 0 and 4",
@@ -194,3 +202,4 @@ class ErrorResponse(BaseModel):
                 "request_id": "req_123456789"
             }
         }
+    }
