@@ -1,0 +1,34 @@
+{
+  "model_name": "Random Forest",
+  "model_type": "baseline",
+  "training_time_seconds": 0.110729,
+  "cv_scores": [
+    0.7017991770041752,
+    0.7304002992891881,
+    0.7685147774036662,
+    0.7188514777403667,
+    0.7192966704077816
+  ],
+  "cv_mean": 0.7277724803690355,
+  "cv_std": 0.022328799027347017,
+  "feature_names": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status"
+  ],
+  "actual_features": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status"
+  ],
+  "feature_count": 4,
+  "training_samples": 4365,
+  "feature_importance": {
+    "p_score": 0.2221956904460388,
+    "p_status": 0.3666673915332267,
+    "fl_score": 0.21431497616597875,
+    "fl_status": 0.1968219418547558
+  }
+}

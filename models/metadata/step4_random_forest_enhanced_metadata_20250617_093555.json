@@ -1,0 +1,52 @@
+{
+  "model_name": "Random Forest",
+  "model_type": "enhanced",
+  "training_time_seconds": 0.252745,
+  "cv_scores": [
+    0.7995149130447843,
+    0.8254919566030676,
+    0.8413019079685746,
+    0.7979723157500935,
+    0.8099925177702955
+  ],
+  "cv_mean": 0.8148547222273631,
+  "cv_std": 0.016471616892083325,
+  "feature_names": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status",
+    "days_since_accident",
+    "consultation_number",
+    "p_score_fl_score_interaction",
+    "severity_index",
+    "both_improving",
+    "high_severity"
+  ],
+  "actual_features": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status",
+    "days_since_accident",
+    "consultation_number",
+    "p_score_fl_score_interaction",
+    "severity_index",
+    "both_improving",
+    "high_severity"
+  ],
+  "feature_count": 10,
+  "training_samples": 4365,
+  "feature_importance": {
+    "p_score": 0.04004751015700145,
+    "p_status": 0.08258175828122188,
+    "fl_score": 0.04283636248942811,
+    "fl_status": 0.08030591336049318,
+    "days_since_accident": 0.42932398825832674,
+    "consultation_number": 0.12932073343376416,
+    "p_score_fl_score_interaction": 0.07830085722030972,
+    "severity_index": 0.07078817250101946,
+    "both_improving": 0.040273262279554224,
+    "high_severity": 0.006221442018881328
+  }
+}

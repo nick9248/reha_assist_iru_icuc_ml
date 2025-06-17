@@ -1,0 +1,56 @@
+{
+  "timestamp": "20250617_093555",
+  "baseline_models": {
+    "logistic_regression": {
+      "cv_mean": 0.6971817577607851,
+      "cv_std": 0.022942459803251918,
+      "feature_count": 4,
+      "training_time": 0.003
+    },
+    "random_forest": {
+      "cv_mean": 0.7277724803690355,
+      "cv_std": 0.022328799027347017,
+      "feature_count": 4,
+      "training_time": 0.110729
+    },
+    "xgboost": {
+      "cv_mean": 0.7283145010625595,
+      "cv_std": 0.022422247955532045,
+      "feature_count": 4,
+      "training_time": 0.042572
+    }
+  },
+  "enhanced_models": {
+    "logistic_regression": {
+      "cv_mean": 0.7387009391352313,
+      "cv_std": 0.030766940151066346,
+      "feature_count": 10,
+      "training_time": 0.022508
+    },
+    "random_forest": {
+      "cv_mean": 0.8148547222273631,
+      "cv_std": 0.016471616892083325,
+      "feature_count": 10,
+      "training_time": 0.252745
+    },
+    "xgboost": {
+      "cv_mean": 0.8045905228379088,
+      "cv_std": 0.016108881418504722,
+      "feature_count": 10,
+      "training_time": 0.037518
+    }
+  },
+  "available_models": [
+    "logistic_regression",
+    "random_forest",
+    "xgboost"
+  ],
+  "saved_files": {
+    "logistic_regression_baseline": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\models\\artifacts\\step4_logistic_regression_baseline_20250617_093555.pkl",
+    "random_forest_baseline": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\models\\artifacts\\step4_random_forest_baseline_20250617_093555.pkl",
+    "xgboost_baseline": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\models\\artifacts\\step4_xgboost_baseline_20250617_093555.pkl",
+    "logistic_regression_enhanced": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\models\\artifacts\\step4_logistic_regression_enhanced_20250617_093555.pkl",
+    "random_forest_enhanced": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\models\\artifacts\\step4_random_forest_enhanced_20250617_093555.pkl",
+    "xgboost_enhanced": "C:\\Users\\mohammadhassan.ashou\\PycharmProjects\\reha_assist_iru_icuc_ml\\models\\artifacts\\step4_xgboost_enhanced_20250617_093555.pkl"
+  }
+}

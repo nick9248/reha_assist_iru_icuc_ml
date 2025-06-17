@@ -1,0 +1,52 @@
+{
+  "model_name": "Logistic Regression",
+  "model_type": "enhanced",
+  "training_time_seconds": 0.022508,
+  "cv_scores": [
+    0.7016790316282702,
+    0.7648260381593714,
+    0.7806995884773662,
+    0.7378526000748223,
+    0.7084474373363262
+  ],
+  "cv_mean": 0.7387009391352313,
+  "cv_std": 0.030766940151066346,
+  "feature_names": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status",
+    "days_since_accident",
+    "consultation_number",
+    "p_score_fl_score_interaction",
+    "severity_index",
+    "both_improving",
+    "high_severity"
+  ],
+  "actual_features": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status",
+    "days_since_accident",
+    "consultation_number",
+    "p_score_fl_score_interaction",
+    "severity_index",
+    "both_improving",
+    "high_severity"
+  ],
+  "feature_count": 10,
+  "training_samples": 4365,
+  "feature_importance": {
+    "p_score": 0.7762113765127999,
+    "p_status": 0.5635016662221985,
+    "fl_score": 0.12850665367933614,
+    "fl_status": 0.5126461506021999,
+    "days_since_accident": 0.00014372038471713156,
+    "consultation_number": 0.2039778765725153,
+    "p_score_fl_score_interaction": 0.28242464758057995,
+    "severity_index": 0.45235901509526394,
+    "both_improving": 0.033409492424590265,
+    "high_severity": 0.16375734034456935
+  }
+}

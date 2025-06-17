@@ -1,0 +1,34 @@
+{
+  "model_name": "Logistic Regression",
+  "model_type": "baseline",
+  "training_time_seconds": 0.003,
+  "cv_scores": [
+    0.6657105097167574,
+    0.706606808829031,
+    0.7349719416386084,
+    0.6897979797979799,
+    0.6888215488215488
+  ],
+  "cv_mean": 0.6971817577607851,
+  "cv_std": 0.022942459803251918,
+  "feature_names": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status"
+  ],
+  "actual_features": [
+    "p_score",
+    "p_status",
+    "fl_score",
+    "fl_status"
+  ],
+  "feature_count": 4,
+  "training_samples": 4365,
+  "feature_importance": {
+    "p_score": 0.31366754772699706,
+    "p_status": 0.6243800086576381,
+    "fl_score": 0.17912828286200166,
+    "fl_status": 0.6411710141734036
+  }
+}
